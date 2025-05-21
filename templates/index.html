@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CinemaSphere - Book Your Movie Experience</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #E50914;
+  --primary-dark: #B81D24;
+  --secondary: #221F1F;
+  --light: #F5F5F1;
+  --gray: #EFEFEF;
+  --dark: #121212;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+        body {
+          background-color: var(--dark);
+          color: var(--light);
+        }
+
+        .hero {
+          background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)),
+          url('/api/placeholder/1920/1080') center/cover no-repeat;
+        height: 60vh;
+        position: relative;
+        }
+
+        .navbar {
+          background-color: rgba(18, 18, 18, 0.9);
+          backdrop-filter: blur(5px);
+        }
+
+        .btn-primary {
+          background-color: var(--primary);
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+          background-color: var(--primary-dark);
+          transform: translateY(-2px);
+        }
+
+        .movie-card {
+          transition: all 0.3s ease;
+          border-radius: 8px;
+          overflow: hidden;
+          background-color: #1a1a1a;
+          border: 1px solid #333;
+        }
+
+        .movie-card:hover {
+          transform: translateY(-10px);
+          box-shadow: 0 10px 25px rgba(229, 9, 20, 0.2);
+        }
+
+        .movie-poster {
+          height: 380px;
+          width: 100%;
+          object-fit: cover;
+          border-radius: 8px 8px 0 0;
+        }
+
+        .modal {
+          display: none;
+          position: fixed;
+          z-index: 50;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          overflow: auto;
+          background-color: rgba(0, 0, 0, 0.8);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .modal.show {
+          display: block;
+          opacity: 1;
+        }
+
+        .modal-content {
+          background-color: #1a1a1a;
+          border-radius: 12px;
+          border: 1px solid #333;
+          width: 90%;
+          max-width: 600px;
+          margin: 10% auto;
+          transform: translateY(-50px);
+          transition: transform 0.4s ease;
+          box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal.show .modal-content {
+          transform: translateY(0);
+        }
+
+        .toast-container {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          z-index: 1000;
+        }
+
+        .toast {
+          transition: all 0.3s ease;
+        }
+
+        .loading-dots span {
+          animation: loading 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) {
+          animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+          animation-delay: -0.16s;
+        }
+
+        @keyframes loading {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1.0); }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: #222;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: #555;
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: #777;
+        }
+
+        /* Section transitions */
+        .section {
+          opacity: 0;
+          transform: translateY(20px);
+          transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .section.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        /* Price tag styles */
+        .price-tag {
+          background-color: var(--primary);
+          color: white;
+          font-weight: bold;
+          border-radius: 20px;
+          padding: 0.25rem 0.75rem;
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          font-size: 0.9rem;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Coming soon badge */
+        .coming-soon {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: rgba(0, 0, 0, 0.7);
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: var(--light);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        /* Footer styling */
+        footer {
+          background-color: rgba(18, 18, 18, 0.95);
+          border-top: 1px solid #333;
+        }
+    </style>
+  </head>
+  <body>
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar fixed top-0 w-full z-10 py-3 px-4 md:px-6">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <a href="/" class="flex items-center">
+          <span class="text-primary text-2xl font-bold tracking-tight text-red-600">Cinema<span class="text-white">Sphere</span></span>
+        </a>
+        <div class="hidden md:flex space-x-8">
+          <a href="/" class="text-white hover:text-red-500 transition-colors duration-300">Home</a>
+          <a href="/#movies" class="text-white hover:text-red-500 transition-colors duration-300">Movies</a>
+          <a href="/#movies" class="text-white hover:text-red-500 transition-colors duration-300">Upcoming</a>
+          <a href="/#contact" class="text-white hover:text-red-500 transition-colors duration-300">Contact</a>
+        </div>
+        <button id="mobile-menu-button" class="md:hidden text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+      <!-- Mobile Menu -->
+      <div id="mobile-menu" class="hidden md:hidden absolute top-16 left-0 right-0 bg-gray-900 shadow-lg rounded-b-lg overflow-hidden transition-all duration-300">
+        <div class="px-4 py-2">
+          <a href="#" class="block py-3 text-white hover:text-red-500 transition-colors duration-300">Home</a>
+          <a href="#movies" class="block py-3 text-white hover:text-red-500 transition-colors duration-300">Movies</a>
+          <a href="#" class="block py-3 text-white hover:text-red-500 transition-colors duration-300">Upcoming</a>
+          <a href="#" class="block py-3 text-white hover:text-red-500 transition-colors duration-300">Contact</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero flex items-center justify-center px-4">
+      <div class="text-center max-w-4xl">
+        <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">Experience Movies Like <span class="text-red-600">Never Before</span></h1>
+        <p class="text-lg md:text-xl mb-8 max-w-2xl mx-auto">Book your tickets for the latest blockbusters and immerse yourself in the ultimate cinematic experience.</p>
+        <a href="#movies" class="btn-primary px-8 py-3 rounded-full font-medium text-lg inline-block">Book Now</a>
+      </div>
+    </section>
+
+    <!-- Featured Movies Section -->
+    <section id="movies" class="py-16 px-4 md:px-8 max-w-7xl mx-auto section">
+      <div class="mb-12 text-center">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Now Showing</h2>
+        <p class="text-gray-400 max-w-2xl mx-auto">Select a movie to book your tickets and enjoy the ultimate cinema experience with the best sound and picture quality.</p>
+      </div>
+
+      <div id="movies-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <!-- Movie cards will be populated dynamically -->
+        <div class="text-center col-span-full">
+          <div class="inline-block mx-auto">
+            <div class="loading-dots flex space-x-2">
+              <span class="w-3 h-3 bg-red-600 rounded-full"></span>
+              <span class="w-3 h-3 bg-red-600 rounded-full"></span>
+              <span class="w-3 h-3 bg-red-600 rounded-full"></span>
+            </div>
+          </div>
+          <p class="mt-4 text-gray-400">Loading movies...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Booking Modal -->
+    <div id="booking-modal" class="modal">
+      <div class="modal-content p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-2xl font-bold" id="modal-movie-title">Movie Title</h3>
+          <button id="close-modal" class="text-gray-400 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="mb-6">
+          <div class="mb-2">
+            <p class="text-sm text-gray-400 mb-1">Show Time</p>
+            <p id="modal-show-time" class="font-medium">June 1, 2025 - 6:00 PM</p>
+          </div>
+          <div class="mb-2">
+            <p class="text-sm text-gray-400 mb-1">Price per Ticket</p>
+            <p id="modal-price" class="font-medium">KSh 500</p>
+          </div>
+        </div>
+
+        <form id="booking-form" class="space-y-4">
+          <input type="hidden" id="movie-id" name="movieId">
+
+          <div>
+            <label for="customer-name" class="block text-sm font-medium text-gray-400 mb-1">Your Name</label>
+            <input type="text" id="customer-name" name="customerName" class="w-full px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500" required>
+          </div>
+
+          <div>
+            <label for="phone-number" class="block text-sm font-medium text-gray-400 mb-1">Phone Number</label>
+            <input type="tel" id="phone-number" name="phoneNumber" placeholder="e.g. 0712345678" class="w-full px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500" required>
+          </div>
+
+          <div>
+            <label for="quantity" class="block text-sm font-medium text-gray-400 mb-1">Number of Tickets</label>
+            <div class="flex items-center border border-gray-700 rounded-md bg-gray-800">
+              <button type="button" id="decrease-quantity" class="px-4 py-2 text-gray-400 hover:text-white focus:outline-none">-</button>
+              <input type="number" id="quantity" name="quantity" value="1" min="1" class="w-full text-center bg-transparent border-none text-white focus:outline-none" readonly>
+              <button type="button" id="increase-quantity" class="px-4 py-2 text-gray-400 hover:text-white focus:outline-none">+</button>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4 mt-6">
+            <div class="flex justify-between items-center mb-6">
+              <span class="font-medium">Total Amount</span>
+              <span id="total-amount" class="text-xl font-bold text-red-500">KSh 500</span>
+            </div>
+
+            <button type="submit" id="submit-booking" class="w-full btn-primary py-3 rounded-md font-medium">
+              Book Ticket
+            </button>
+
+            <button type="button" id="loading-button" class="hidden w-full bg-gray-700 py-3 rounded-md font-medium text-gray-300 cursor-not-allowed" disabled>
+              <div class="flex justify-center items-center">
+                <div class="loading-dots flex space-x-2 items-center">
+                  <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
+                  <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
+                  <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
+                </div>
+                <span class="ml-2">Processing Payment...</span>
+              </div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- About Section -->
+    <section id="about-us" class="py-16 px-4 md:px-8 bg-gray-900 section">
+      <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center">
+          <div class="md:w-1/2 mb-8 md:mb-0 md:pr-8">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">Your Ultimate Cinema Experience</h2>
+            <p class="text-gray-400 mb-6">Discover the magic of movies in our state-of-the-art theatres designed for the ultimate viewing experience. From crystal-clear projection to immersive sound, every detail has been perfected.</p>
+            <ul class="space-y-3">
+              <li class="flex items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mt-1 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <span>4K Ultra HD projection with Dolby Vision</span>
+              </li>
+              <li class="flex items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mt-1 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <span>Premium reclining seats with extra legroom</span>
+              </li>
+              <li class="flex items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mt-1 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <span>Dolby Atmos 3D surround sound</span>
+              </li>
+            </ul>
+          </div>
+          <div class="md:w-1/2">
+            <div class="rounded-lg overflow-hidden shadow-xl">
+              <img src="/static/img/cinema_interior.avif" alt="Cinema Interior" class="w-full">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-4 md:px-8">
+      <div class="max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <h4 class="text-xl font-bold mb-4">CinemaSphere</h4>
+            <p class="text-gray-400 mb-4">The ultimate destination for movie lovers with the latest blockbusters and classics in stunning quality.</p>
+            <div class="flex space-x-4">
+              <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/></svg>
+              </a>
+              <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723 10.059 10.059 0 01-3.127 1.184 4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+              </a>
+              <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z"/></svg>
+              </a>
+            </div>
+          </div>
+          <div>
+            <h4 class="text-lg font-bold mb-4">Quick Links</h4>
+            <ul class="space-y-2">
+              <li><a href="/" class="text-gray-400 hover:text-white transition-colors">Home</a></li>
+              <li><a href="/#movies" class="text-gray-400 hover:text-white transition-colors">Movies</a></li>
+              <li><a href="/#about-us" class="text-gray-400 hover:text-white transition-colors">About Us</a></li>
+              <li><a href="/#contact" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+              <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Terms & Conditions</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 id="contact" class="text-lg font-bold mb-4">Contact Us</h4>
+            <address class="not-italic text-gray-400">
+              <p class="mb-2">Kimathi Street, CBD</p>
+              <p class="mb-2">Nairobi, Kenya</p>
+              <p class="mb-2">info@cinemasphere.com</p>
+              <p>+254 114 742 348</p>
+            </address>
+          </div>
+        </div>
+        <div class="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500">
+          <p>&copy; 2025 CinemaSphere. All Rights Reserved.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const moviesContainer = document.getElementById('movies-container');
+        const bookingModal = document.getElementById('booking-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const bookingForm = document.getElementById('booking-form');
+        const modalMovieTitle = document.getElementById('modal-movie-title');
+        const modalShowTime = document.getElementById('modal-show-time');
+        const modalPrice = document.getElementById('modal-price');
+        const movieIdInput = document.getElementById('movie-id');
+        const quantityInput = document.getElementById('quantity');
+        const decreaseQuantityBtn = document.getElementById('decrease-quantity');
+        const increaseQuantityBtn = document.getElementById('increase-quantity');
+        const totalAmountEl = document.getElementById('total-amount');
+        const submitBookingBtn = document.getElementById('submit-booking');
+        const loadingButton = document.getElementById('loading-button');
+        const toastContainer = document.getElementById('toast-container');
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const phoneInput = document.getElementById('phone-number');
+
+        // Sections animation
+        const sections = document.querySelectorAll('.section');
+
+        function checkSections() {
+          const triggerBottom = window.innerHeight * 0.8;
+
+          sections.forEach(section => {
+            const sectionTop = section.getBoundingClientRect().top;
+            if (sectionTop < triggerBottom) {
+              section.classList.add('visible');
+            }
+          });
+        }
+
+        window.addEventListener('scroll', checkSections);
+        checkSections(); // Check on load
+
+        // Mobile menu toggle
+        mobileMenuButton.addEventListener('click', function() {
+          mobileMenu.classList.toggle('hidden');
+        });
+
+        // Toast notification system
+        function createToast(message, type = 'error') {
+          const toast = document.createElement('div');
+          toast.className = `mb-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out toast ${
+            type === 'error' ? 'bg-red-900 border-red-700 text-red-100' : 'bg-green-900 border-green-700 text-green-100'
+          }`;
+
+          toast.innerHTML = `
+            <div class="flex items-center">
+            <div class="flex-shrink-0">
+            ${type === 'error' ?
+                '<svg class="h-5 w-5 text-red-300" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/></svg>' :
+              '<svg class="h-5 w-5 text-green-300" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>'
+            }
+            </div>
+            <div class="ml-3">
+            <p class="text-sm font-medium">${message}</p>
+            </div>
+            <div class="ml-auto pl-3">
+            <button class="inline-flex text-gray-400 hover:text-white focus:outline-none">
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+            </svg>
+            </button>
+            </div>
+            </div>
+          `;
+
+          // Add click event to close button
+          toast.querySelector('button').addEventListener('click', function() {
+            toast.classList.add('opacity-0');
+            setTimeout(() => toast.remove(), 300);
+          });
+
+        toastContainer.appendChild(toast);
+
+        // Auto-remove toast after 5 seconds
+        setTimeout(() => {
+          toast.classList.add('opacity-0');
+          setTimeout(() => toast.remove(), 300);
+        }, 5000);
+      }
+
+        // Phone number formatting and validation
+        function formatPhoneNumber(phone) {
+          // Remove any non-digit characters
+          phone = phone.replace(/\D/g, '');
+
+          // Handle different formats
+          if (phone.startsWith('254')) {
+            return phone;
+          } else if (phone.startsWith('0')) {
+            return '254' + phone.slice(1);
+          } else if (phone.startsWith('+254')) {
+            return phone.slice(1);
+          }
+
+          return phone;
+        }
+
+        function validatePhone(phone) {
+          const regex = /^254[17][0-9]{8}$/;
+          return regex.test(phone);
+        }
+
+        // Real-time phone number formatting
+        phoneInput.addEventListener('input', function(e) {
+          let formattedNumber = formatPhoneNumber(e.target.value);
+          e.target.value = formattedNumber;
+        });
+
+        // Fetch movies from API
+        async function fetchMovies() {
+          try {
+            const response = await fetch('/api/movies');
+            if (!response.ok) {
+              throw new Error('Failed to fetch movies');
+            }
+
+            const data = await response.json();
+
+            // Clear loading state
+            moviesContainer.innerHTML = '';
+
+            // Check if movies exist
+            if (data.movies && data.movies.length > 0) {
+              // Render movies
+              data.movies.forEach(movie => {
+                const movieCard = createMovieCard(movie);
+                moviesContainer.appendChild(movieCard);
+              });
+            } else {
+              moviesContainer.innerHTML = '<div class="text-center col-span-full"><p class="text-gray-400">No movies available at the moment.</p></div>';
+            }
+          } catch (error) {
+            console.error('Error:', error);
+            moviesContainer.innerHTML = '<div class="text-center col-span-full"><p class="text-red-400">Failed to load movies. Please try again later.</p></div>';
+            createToast('Failed to load movies. Please try again later.', 'error');
+          }
+        }
+
+        // Create movie card element
+        function createMovieCard(movie) {
+          const movieDate = new Date(movie.showTime);
+          const formattedDate = movieDate.toLocaleDateString('en-US', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+
+          const formattedTime = movieDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const cardDiv = document.createElement('div');
+          cardDiv.className = 'movie-card relative';
+          cardDiv.innerHTML = `
+            <div class="relative">
+            <img src="${movie.imageUrl}" alt="${movie.title}" class="movie-poster">
+            <div class="price-tag">KSh ${movie.price}</div>
+            </div>
+            <div class="p-4">
+            <h3 class="text-xl font-bold mb-2">${movie.title}</h3>
+            <p class="text-gray-400 mb-4 line-clamp-2 h-12">${movie.description || 'No description available.'}</p>
+            <div class="flex justify-between items-center mb-4">
+            <div>
+            <p class="text-sm text-gray-500">${formattedDate}</p>
+            <p class="text-sm font-medium">${formattedTime}</p>
+            </div>
+            </div>
+            <button class="book-now-btn w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md transition-colors duration-300"
+                    data-movie-id="${movie.movieId}">
+          Book Now
+            </button>
+            </div>
+          `;
+
+          // Add event listener to the book now button
+          const bookNowBtn = cardDiv.querySelector('.book-now-btn');
+          bookNowBtn.addEventListener('click', () => {
+            openBookingModal(movie);
+          });
+
+          return cardDiv;
+        }
+
+        // Function to open booking modal
+        function openBookingModal(movie) {
+          // Set modal data
+          modalMovieTitle.textContent = movie.title;
+          movieIdInput.value = movie.movieId;
+
+          const showTime = new Date(movie.showTime);
+          modalShowTime.textContent = showTime.toLocaleString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const price = movie.price;
+          modalPrice.textContent = `KSh ${price}`;
+
+          // Reset form
+          bookingForm.reset();
+          quantityInput.value = 1;
+          updateTotalAmount(price, 1);
+
+          // Show modal
+          bookingModal.classList.add('show');
+          document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        // Close modal
+        closeModalBtn.addEventListener('click', () => {
+          bookingModal.classList.remove('show');
+          document.body.style.overflow = ''; // Allow scrolling again
+        });
+
+        // Close modal when clicking outside
+        bookingModal.addEventListener('click', (e) => {
+          if (e.target === bookingModal) {
+            bookingModal.classList.remove('show');
+            document.body.style.overflow = ''; // Allow scrolling again
+          }
+        });
+
+      // Quantity controls
+      decreaseQuantityBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value);
+        if (currentValue > 1) {
+          quantityInput.value = currentValue - 1;
+          const price = parseFloat(modalPrice.textContent.replace('KSh ', ''));
+          updateTotalAmount(price, currentValue - 1);
+        }
+      });
+
+      increaseQuantityBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value);
+        quantityInput.value = currentValue + 1;
+        const price = parseFloat(modalPrice.textContent.replace('KSh ', ''));
+        updateTotalAmount(price, currentValue + 1);
+      });
+
+      // Update total amount
+      function updateTotalAmount(price, quantity) {
+        const total = price * quantity;
+        totalAmountEl.textContent = `KSh ${total}`;
+      }
+
+      // Handle form submission
+      bookingForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Validate phone number
+        const phoneNumber = formatPhoneNumber(phoneInput.value.trim());
+        if (!validatePhone(phoneNumber)) {
+          createToast('Please enter a valid phone number (e.g., 0712345678)', 'error');
+          return;
+        }
+
+        // Prepare payload
+        const payload = {
+          movieId: parseInt(movieIdInput.value),
+          customerName: document.getElementById('customer-name').value.trim(),
+          phoneNumber: phoneNumber,
+          quantity: parseInt(quantityInput.value)
+        };
+
+        // Show loading state
+        submitBookingBtn.classList.add('hidden');
+        loadingButton.classList.remove('hidden');
+
+        try {
+          // Send API request
+          const response = await fetch('/api/make-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            // If the payment was initiated successfully
+            createToast('Payment initiated successfully. Please check your phone to complete the transaction.', 'success');
+
+            // Start checking status
+            if (data.checkoutRequestId) {
+              checkPaymentStatus(data.checkoutRequestId, data.ticketId);
+            }
+          } else {
+            // If there was an error
+            createToast(data.error || 'Failed to process payment. Please try again.', 'error');
+            submitBookingBtn.classList.remove('hidden');
+            loadingButton.classList.add('hidden');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          createToast('An error occurred. Please try again later.', 'error');
+          submitBookingBtn.classList.remove('hidden');
+          loadingButton.classList.add('hidden');
+        }
+      });
+
+      // Function to check payment status
+      function checkPaymentStatus(checkoutRequestId, ticketId) {
+        function queryStatus() {
+          return fetch('/api/query-payment-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ checkoutRequestId })
+          });
+        }
+
+        function processStatus(statusData) {
+          if (statusData.errorCode) {
+            // Payment failed or still pending
+            if (statusData.errorCode === "500.001.1001") {
+              // Still waiting for payment (transaction in progress)
+              // Continue polling
+              return new Promise(resolve => setTimeout(resolve, 5000))
+                .then(queryStatus)
+                .then(response => response.json())
+                .then(processStatus)
+                .catch(error => {
+                  createToast('An unexpected error occurred while checking payment status', 'error');
+                  submitBookingBtn.classList.remove('hidden');
+                  loadingButton.classList.add('hidden');
+                });
+            } else {
+              // Payment failed with a specific error
+              createToast('Payment failed: ' + (statusData.errorMessage || 'Unknown error'), 'error');
+              submitBookingBtn.classList.remove('hidden');
+              loadingButton.classList.add('hidden');
+            }
+          } else if (statusData.ResultCode === "0") {
+            // Payment successful
+            createToast('Payment successful! Your ticket has been booked.', 'success');
+            // Close modal and reset form
+            bookingModal.classList.remove('show');
+            document.body.style.overflow = ''; // Allow scrolling again
+
+            // Redirect to ticket details page
+            window.location.href = `/api/tickets/${ticketId}`;
+          } else {
+            // Continue polling until we get a definitive status
+            return new Promise(resolve => setTimeout(resolve, 5000))
+              .then(queryStatus)
+              .then(response => response.json())
+              .then(processStatus)
+              .catch(error => {
+                createToast('An unexpected error occurred while checking payment status', 'error');
+                submitBookingBtn.classList.remove('hidden');
+                loadingButton.classList.add('hidden');
+              });
+          }
+        }
+
+        // Start the status checking process
+        return queryStatus()
+          .then(response => response.json())
+          .then(processStatus)
+          .catch(error => {
+            createToast('An unexpected error occurred while checking payment status', 'error');
+            submitBookingBtn.classList.remove('hidden');
+            loadingButton.classList.add('hidden');
+          });
+      }
+
+      // Initialize
+      fetchMovies();
+});
+    </script>
+  </body>
+</html>
