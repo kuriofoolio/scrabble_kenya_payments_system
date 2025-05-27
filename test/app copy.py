@@ -9,12 +9,10 @@ from datetime import datetime
 from sqlalchemy.sql import func
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
-from threading import Thread
-from flask_mailman import EmailMultiAlternatives
 from config import *
 
 # Initialize Flask app
-app = Flask("Scrabble Kenya Payments System")
+app = Flask("SK Payments System")
 
 # Configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
@@ -39,105 +37,6 @@ app.config[
 
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
-
-
-# Email sending functions
-def send_async_email(app, message):
-    """
-    Asynchronously sends an email using Flask-Mailman within the given Flask
-        app context.
-
-    Parameters:
-        - app: Flask app object
-        - msg: Message object containing email details
-    """
-    with app.app_context():
-        message.send()
-
-
-def send_email(to, subject, template, cc=None, bcc=None, **kwargs):
-    """
-    Asynchronously send an email using Flask-Mailman with support for HTML templates only.
-
-    Parameters:
-        - to: Email recipient(s) (string or list of strings)
-        - subject: Email subject
-        - template: Base name of the email template (without the file extension)
-        - cc: Carbon copy recipients (optional, string or list of strings)
-        - bcc: Blind carbon copy recipients (optional, string or list of strings)
-        - **kwargs: Additional keyword arguments to pass to the email template
-
-    Returns:
-        - Thread object representing the asynchronous email sending process
-    """
-    app = current_app._get_current_object()
-    rendered_html = render_template(template + ".html", **kwargs)
-
-    # Create the EmailMultiAlternatives message
-    message = EmailMultiAlternatives(subject=subject, body=rendered_html, to=to)
-
-    # Attach HTML version of the email
-    message.attach_alternative(rendered_html, "text/html")
-
-    # Add CC and BCC if provided
-    if cc:
-        if isinstance(cc, str):
-            cc = [cc]
-        message.cc = cc
-
-    if bcc:
-        if isinstance(bcc, str):
-            bcc = [bcc]
-        message.bcc = bcc
-
-    # Send the email asynchronously
-    thread = Thread(target=send_async_email, args=[app, message])
-    thread.start()
-    return thread
-
-
-def send_ticket_confirmation_emails(payment_id):
-    """
-    Send ticket confirmation emails to all players associated with a payment
-    
-    Parameters:
-        - payment_id: ID of the payment record
-    """
-    try:
-        # Get payment details
-        payment = Payment.query.get(payment_id)
-        if not payment:
-            print(f"Payment {payment_id} not found")
-            return
-
-        # Get all tickets for this payment
-        tickets = Ticket.query.filter_by(paymentId=payment_id).all()
-        
-        for ticket in tickets:
-            player = ticket.player
-            division = ticket.division
-            
-            # Only send email if player has an email address
-            if player and player.playerEmail:
-                try:
-                    send_email(
-                        to=[player.playerEmail],
-                        subject=f"Tournament Registration Confirmation - {division.title}",
-                        template="ticket_confirmation",
-                        player=player,
-                        division=division,
-                        ticket=ticket,
-                        payment=payment
-                    )
-                    print(f"Ticket confirmation email sent to {player.playerEmail}")
-                except Exception as e:
-                    print(f"Failed to send email to {player.playerEmail}: {str(e)}")
-            else:
-                print(f"No email address for player {player.playerName if player else 'Unknown'}")
-                
-    except Exception as e:
-        print(f"Error sending ticket confirmation emails: {str(e)}")
-
 
 # Models
 class Division(db.Model):
@@ -890,9 +789,6 @@ def callback_function():
             payment.transactionDate = transaction_date
 
             db.session.commit()
-
-            # Send ticket confirmation emails to all players
-            send_ticket_confirmation_emails(payment.paymentId)
 
             return jsonify({"message": "Payment completed successfully"})
 

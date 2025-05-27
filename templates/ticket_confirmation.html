@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Registration Confirmation</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #E50914 0%, #B81D24 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .ticket-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #E50914;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .amount {
+            background-color: #E50914;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #ddd;
+            margin: 20px 0;
+        }
+        
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .contact-info {
+            margin-top: 15px;
+        }
+        
+        .contact-info a {
+            color: #E50914;
+            text-decoration: none;
+        }
+        
+        .social-links {
+            margin-top: 15px;
+        }
+        
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+            color: #E50914;
+            text-decoration: none;
+        }
+        
+        .important-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .info-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🎉 Registration Confirmed!</h1>
+            <p>Your tournament ticket is ready</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear <strong>{{ player.playerName }}</strong>,</p>
+            
+            <p>Congratulations! Your registration for the Scrabble Kenya Tournament has been confirmed. We're excited to see you compete!</p>
+            
+            <div class="ticket-info">
+                <h3 style="margin-top: 0; color: #E50914;">🎫 Your Ticket Details</h3>
+                
+                <div class="info-row">
+                    <span class="info-label">Ticket ID:</span>
+                    <span class="info-value">#{{ ticket.ticketId }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Player Name:</span>
+                    <span class="info-value">{{ player.playerName }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Player Rating:</span>
+                    <span class="info-value">{{ player.playerRating }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Division:</span>
+                    <span class="info-value">{{ division.title }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Division Rating Range:</span>
+                    <span class="info-value">{{ division.minimumRating }} - {{ division.maximumRating }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Ticket Price:</span>
+                    <span class="info-value"><span class="amount">KSh {{ ticket.ticketPrice }}</span></span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Registration Date:</span>
+                    <span class="info-value">{{ ticket.dateCreated.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                </div>
+            </div>
+            
+            {% if payment.mpesaReceiptNumber %}
+            <div class="ticket-info">
+                <h3 style="margin-top: 0; color: #28a745;">💳 Payment Information</h3>
+                
+                <div class="info-row">
+                    <span class="info-label">Payment Status:</span>
+                    <span class="info-value" style="color: #28a745; font-weight: bold;">✅ {{ payment.paymentStatus }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">M-Pesa Receipt:</span>
+                    <span class="info-value">{{ payment.mpesaReceiptNumber }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Transaction Date:</span>
+                    <span class="info-value">{{ payment.transactionDate.strftime('%B %d, %Y at %I:%M %p') if payment.transactionDate else 'N/A' }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Total Amount Paid:</span>
+                    <span class="info-value"><span class="amount">KSh {{ payment.totalAmount }}</span></span>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="important-note">
+                <strong>📋 Important Tournament Information:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Please arrive at least 30 minutes before your scheduled match time</li>
+                    <li>Bring a valid photo ID for verification</li>
+                    <li>Tournament rules and schedule will be announced soon</li>
+                    <li>Keep this email as proof of registration</li>
+                </ul>
+            </div>
+            
+            {% if division.description %}
+            <div class="divider"></div>
+            <h3 style="color: #E50914;">📖 About {{ division.title }}</h3>
+            <p>{{ division.description }}</p>
+            {% endif %}
+            
+            <div class="divider"></div>
+            
+            <p>We look forward to an exciting tournament! If you have any questions, please don't hesitate to contact us.</p>
+            
+            <p style="margin-top: 20px;">
+                Best regards,<br>
+                <strong>The Scrabble Kenya Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Scrabble Kenya</strong></p>
+            <div class="contact-info">
+                <p>📧 Email: <a href="mailto:info@scrabblekenya.com">info@scrabblekenya.com</a></p>
+                <p>📞 Phone: +254714666212, +254725037750</p>
+                <p>📍 Address: P.O.BOX 22388 - 00100, Nairobi, Kenya</p>
+            </div>
+            
+            <div class="social-links">
+                <a href="https://www.facebook.com/groups/Scrabblekenya/" title="Facebook">Facebook</a> |
+                <a href="https://twitter.com/kenya_scrabble?lang=en" title="Twitter">Twitter</a> |
+                <a href="https://www.instagram.com/scrabble.kenya/" title="Instagram">Instagram</a>
+            </div>
+            
+            <p style="margin-top: 15px; font-size: 12px; color: #999;">
+                This email was sent because you registered for a Scrabble Kenya tournament.<br>
+                Please do not reply to this email as it is automatically generated.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
