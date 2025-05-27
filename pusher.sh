@@ -50,4 +50,5 @@ git branch -M $branch
 git remote add origin https://github.com/kuriofoolio/SKPaymentSystem.git
 
 #Push the changes to your GitHub repository
-git push -u origin $branch
+# git push -u origin $branch
+git push --force origin $branch
