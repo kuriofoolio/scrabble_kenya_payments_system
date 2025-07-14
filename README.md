@@ -1,5 +1,5 @@
 
-<img src="https://github.com/user-attachments/assets/8cc3904f-582e-4177-8205-e78ccea0500a" alt="Scrabble Kenya Logo" width="180" height="180"></img>
+<img src="static/img/sk_logo.png" alt="Scrabble Kenya Logo" width="180" height="180"></img>
 
 # Scrabble Kenya Tournament Registration System API Documentation
 
