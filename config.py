@@ -14,8 +14,7 @@ MPESA_BASE_URL= "https://sandbox.safaricom.co.ke"
 MPESA_ACCESS_TOKEN_URL= "oauth/v1/generate?grant_type=client_credentials"
 MPESA_STK_PUSH_URL= "mpesa/stkpush/v1/processrequest"
 MPESA_STK_QUERY_URL="mpesa/stkpushquery/v1/query"
-MPESA_CALLBACK_URL="https://b271-41-212-105-74.ngrok-free.app/api/mpesa-callback"
-#  "https://13a6-169-150-218-3.ngrok-free.app/callback"
+MPESA_CALLBACK_URL="https://1a80e9c198af.ngrok-free.app/api/mpesa-callback"
 
 MPESA_PASSKEY= "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 

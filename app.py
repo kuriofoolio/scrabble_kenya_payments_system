@@ -5,13 +5,16 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 from flask import current_app
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.sql import func
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
 from threading import Thread
 from flask_mailman import EmailMultiAlternatives
 from config import *
+from flask import redirect, url_for
+from functools import wraps
+
 
 # Initialize Flask app
 app = Flask("Scrabble Kenya Payments System")
@@ -418,10 +421,60 @@ def format_phone_number(phone_number):
 
 
 # Routes
+# Set your deadline here
+KENYA_TZ = timezone(timedelta(hours=3))
+DEADLINE = datetime(2025, 8, 1, 23, 59, 59, tzinfo=KENYA_TZ)
+
+def check_deadline():
+    """Check if current time is past the deadline"""
+    current_time = datetime.now(KENYA_TZ)
+    return current_time > DEADLINE
+
+@app.before_request
+def before_request():
+    """Check deadline before every request"""
+    # Skip deadline check for specific routes
+    excluded_routes = ['deadline_passed', 'static']
+    
+    if request.endpoint not in excluded_routes and check_deadline():
+        return redirect(url_for('deadline_passed'))
+
+@app.route("/deadline-passed")
+def deadline_passed():
+    """Page shown when deadline has passed"""
+    deadline_formatted = DEADLINE.strftime("%B %d, %Y at %I:%M %p UTC")
+    return render_template("deadline_passed.html", deadline=deadline_formatted)
+
 @app.route("/")
+# @deadline_required
 def index():
     """Root endpoint"""
     return render_template("index.html")
+
+@app.route("/api/check-deadline")
+def api_check_deadline():
+    """API endpoint to check deadline status"""
+    is_past = check_deadline()
+    time_remaining = None
+    
+    if not is_past:
+        current_time = datetime.now(KENYA_TZ)
+        time_diff = DEADLINE - current_time
+        days = time_diff.days
+        hours, remainder = divmod(time_diff.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        time_remaining = {
+            "days": days,
+            "hours": hours,
+            "minutes": minutes
+        }
+    
+    return {
+        "deadline_passed": is_past,
+        "deadline": DEADLINE.isoformat(),
+        "current_time": datetime.now(KENYA_TZ).isoformat(),
+        "time_remaining": time_remaining
+    }
 
 
 @app.route("/api/divisions", methods=["GET"])
@@ -961,4 +1014,4 @@ if __name__ == "__main__":
         db.create_all()
 
     # Run the Flask app
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5001)
