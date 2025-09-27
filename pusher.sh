@@ -39,7 +39,7 @@ git commit -m "$modification"
 git branch -M $branch
 
 #git remote add origin https://@github.com/kuriofoolio/scrabble_kenya_payments_system.git
-# git remote add origin https://github.com/kuriofoolio/scrabble_kenya_payments_system.git
+git remote add origin https://github.com/kuriofoolio/scrabble_kenya_payments_system.git
 
 #Push the changes to your GitHub repository
 #git push -u origin $branch
