@@ -46,7 +46,7 @@ git commit -m "$modification"
 
 # git branch -M $branch
 
-git remote add origin https://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@github.com/kuriofoolio/scrabble_kenya_payments_system.git
+git remote add origin https://$GIT_PAT@github.com/kuriofoolio/scrabble_kenya_payments_system.git
 # git remote add origin https://github.com/kuriofoolio/scrabble_kenya_payments_system.git
 
 #Push the changes to your GitHub repository
