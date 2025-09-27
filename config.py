@@ -10,13 +10,11 @@ load_dotenv()  # Looks for .env in current directory
 SQLALCHEMY_DATABASE_URI= "sqlite:///sk_tickets.db"
 SQLALCHEMY_TRACK_MODIFICATIONS= False 
 FLASK_SECRET_KEY="a867431a0ab449d8c967e1c950eba612a289a505a7938c6c"
-MPESA_BASE_URL= "https://sandbox.safaricom.co.ke"
-MPESA_ACCESS_TOKEN_URL= "oauth/v1/generate?grant_type=client_credentials"
-MPESA_STK_PUSH_URL= "mpesa/stkpush/v1/processrequest"
-MPESA_STK_QUERY_URL="mpesa/stkpushquery/v1/query"
-MPESA_CALLBACK_URL="https://1a80e9c198af.ngrok-free.app/api/mpesa-callback"
-
-MPESA_PASSKEY= "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+PESAPAL_BASE_URL = "https://pay.pesapal.com/v3"
+PESAPAL_CONSUMER_KEY = "CdvEJKiWtYguQqEHfRIJ8vZ8lmlWDa1P"
+PESAPAL_CONSUMER_SECRET = "1dKYEWoxb2aiLic4cdNTT6WLDWE="
+#PESAPAL_CALLBACK_URL = "pesapal/callback"
+#PESAPAL_IPN_URL = "pesapal/ipn"
 
 # Email Configuration
 MAIL_SERVER = 'smtp.gmail.com'

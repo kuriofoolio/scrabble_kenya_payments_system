@@ -23,10 +23,10 @@ read -p "what change are we making today: " modification
 #pip freeze > requirements.txt
 
 #initialize branch name 
-branch='main'
+branch='pesapal-func'
 
 #initialize repo
-# git init
+git init
 
 # Create a new branch named 'rag'
 # git checkout -b $branch
@@ -46,11 +46,11 @@ git commit -m "$modification"
 
 # git branch -M $branch
 
-# git remote add origin https://$GIT_PAT@github.com/kuriofoolio/scrabble_kenya_payments_system.git
+git remote add origin https://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@github.com/kuriofoolio/scrabble_kenya_payments_system.git
 # git remote add origin https://github.com/kuriofoolio/scrabble_kenya_payments_system.git
 
 #Push the changes to your GitHub repository
-git push -u origin $branch
+#git push -u origin $branch
 
 # to overwrite all changes on the branch
-# git push --force origin $branch
+git push --force origin $branch

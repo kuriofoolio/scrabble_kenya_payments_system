@@ -2,5 +2,8 @@ __pycache__/
 instance/
 .webassets-cache
 /venv
-# /test
+migrations
+/test
 .env 
+pusher.sh
+config.py

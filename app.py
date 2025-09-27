@@ -1,5 +1,7 @@
+from flask_migrate import Migrate
 import os
 import base64
+import json
 import requests
 from flask import Flask
 from flask import jsonify
@@ -13,7 +15,6 @@ from threading import Thread
 from flask_mailman import EmailMultiAlternatives
 from config import *
 from flask import redirect, url_for
-from functools import wraps
 
 
 # Initialize Flask app
@@ -24,24 +25,17 @@ app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = SQLALCHEMY_TRACK_MODIFICATIONS
 app.config["FLASK_SECRET_KEY"] = FLASK_SECRET_KEY
 
-# M-Pesa Configuration
-app.config["MPESA_BASE_URL"] = MPESA_BASE_URL
-app.config["MPESA_ACCESS_TOKEN_URL"] = MPESA_ACCESS_TOKEN_URL
-app.config["MPESA_STK_PUSH_URL"] = MPESA_STK_PUSH_URL
-app.config["MPESA_STK_QUERY_URL"] = MPESA_STK_QUERY_URL
-app.config["MPESA_BUSINESS_SHORT_CODE"] = "174379"
-app.config["MPESA_PASSKEY"] = MPESA_PASSKEY
-app.config["MPESA_TILL_NUMBER"] = "8976288"
-app.config["MPESA_CALLBACK_URL"] = MPESA_CALLBACK_URL
-app.config[
-    "MPESA_CONSUMER_KEY"
-] = "E7RkuNKKVFG3p2nWjEM78RcbFOwH2qb5UHpGvpOhzodFGbHV"
-app.config[
-    "MPESA_CONSUMER_SECRET"
-] = "tQw44mUODFBqUk25oS5NweJBMrlvdWwkYdap6P3895kekW2LmLFcHT4Lvjr4figm"
+# Pesapal Configuration
+app.config["PESAPAL_BASE_URL"] = PESAPAL_BASE_URL
+app.config["PESAPAL_CONSUMER_KEY"] = PESAPAL_CONSUMER_KEY
+app.config["PESAPAL_CONSUMER_SECRET"] = PESAPAL_CONSUMER_SECRET
+#app.config["PESAPAL_CALLBACK_URL"] = PESAPAL_CALLBACK_URL
+#app.config["PESAPAL_IPN_URL"] = PESAPAL_IPN_URL
 
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
+
+migrate = Migrate(app, db)
 
 
 # Email sending functions
@@ -102,7 +96,7 @@ def send_email(to, subject, template, cc=None, bcc=None, **kwargs):
 def send_ticket_confirmation_emails(payment_id):
     """
     Send ticket confirmation emails to all players associated with a payment
-    
+
     Parameters:
         - payment_id: ID of the payment record
     """
@@ -115,11 +109,11 @@ def send_ticket_confirmation_emails(payment_id):
 
         # Get all tickets for this payment
         tickets = Ticket.query.filter_by(paymentId=payment_id).all()
-        
+
         for ticket in tickets:
             player = ticket.player
             division = ticket.division
-            
+
             # Only send email if player has an email address
             if player and player.playerEmail:
                 try:
@@ -130,14 +124,20 @@ def send_ticket_confirmation_emails(payment_id):
                         player=player,
                         division=division,
                         ticket=ticket,
-                        payment=payment
+                        payment=payment,
                     )
-                    print(f"Ticket confirmation email sent to {player.playerEmail}")
+                    print(
+                        f"Ticket confirmation email sent to {player.playerEmail}"
+                    )
                 except Exception as e:
-                    print(f"Failed to send email to {player.playerEmail}: {str(e)}")
+                    print(
+                        f"Failed to send email to {player.playerEmail}: {str(e)}"
+                    )
             else:
-                print(f"No email address for player {player.playerName if player else 'Unknown'}")
-                
+                print(
+                    f"No email address for player {player.playerName if player else 'Unknown'}"
+                )
+
     except Exception as e:
         print(f"Error sending ticket confirmation emails: {str(e)}")
 
@@ -148,7 +148,7 @@ class Division(db.Model):
     Division model representing divisions available to play in
     """
 
-    __tablename__ = "division"
+    _tablename_ = "division"
 
     divisionId = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -183,17 +183,18 @@ class Division(db.Model):
             else None,
         }
 
+
 class Player(db.Model):
     """
     Player model representing players
     """
 
-    __tablename__ = "player"
+    _tablename_ = "player"
 
     playerId = db.Column(db.Integer, primary_key=True)
     playerName = db.Column(db.String(255), nullable=False)
     playerRating = db.Column(db.Integer, nullable=False)
-    playerEmail = db.Column(db.String(255))
+   # playerEmail = db.Column(db.String(255))
 
     # Relationship with Ticket model (one-to-one)
     ticket = db.relationship("Ticket", back_populates="player", uselist=False)
@@ -204,7 +205,7 @@ class Player(db.Model):
             "playerId": self.playerId,
             "playerName": self.playerName,
             "playerRating": self.playerRating,
-            "playerEmail": self.playerEmail,
+ #           "playerEmail": self.playerEmail,
         }
 
 
@@ -213,16 +214,17 @@ class Payment(db.Model):
     Payment model representing payment transactions
     """
 
-    __tablename__ = "payment"
+    _tablename_ = "payment"
 
     paymentId = db.Column(db.Integer, primary_key=True)
     customerName = db.Column(db.String(255), nullable=False)
-    phoneNumber = db.Column(db.String(20), nullable=False)
+   # phoneNumber = db.Column(db.String(20), nullable=False)
     totalAmount = db.Column(db.Numeric(10, 2), nullable=False)
     paymentStatus = db.Column(
         db.Enum("Pending", "Paid", "Failed"), default="Pending", nullable=False
     )
-    mpesaReceiptNumber = db.Column(db.String(100))
+    receiptNumber = db.Column(db.String(100))
+    paymentMethod = db.Column(db.String(50), default="Pesapal")
     transactionDate = db.Column(db.DateTime)
     dateCreated = db.Column(db.DateTime, default=func.now())
     lastUpdated = db.Column(
@@ -234,9 +236,11 @@ class Payment(db.Model):
         "Ticket", back_populates="payment", cascade="all, delete-orphan"
     )
 
-    # Relationship with PushRequest model
-    push_requests = db.relationship(
-        "PushRequest", back_populates="payment", cascade="all, delete-orphan"
+    # Relationship with PesapalInterimPayment model
+    interim_payments = db.relationship(
+        "PesapalInterimPayment",
+        back_populates="payment",
+        cascade="all, delete-orphan",
     )
 
     def to_dict(self):
@@ -244,10 +248,11 @@ class Payment(db.Model):
         return {
             "paymentId": self.paymentId,
             "customerName": self.customerName,
-            "phoneNumber": self.phoneNumber,
+   #         "phoneNumber": self.phoneNumber,
             "totalAmount": float(self.totalAmount),
             "paymentStatus": self.paymentStatus,
-            "mpesaReceiptNumber": self.mpesaReceiptNumber,
+            "receiptNumber": self.receiptNumber,
+            "paymentMethod": self.paymentMethod,
             "transactionDate": self.transactionDate.isoformat()
             if self.transactionDate
             else None,
@@ -265,7 +270,7 @@ class Ticket(db.Model):
     Ticket model representing purchased tickets
     """
 
-    __tablename__ = "ticket"
+    _tablename_ = "ticket"
 
     ticketId = db.Column(db.Integer, primary_key=True)
     ticketPrice = db.Column(db.Numeric(10, 2), nullable=False)
@@ -310,12 +315,16 @@ class Ticket(db.Model):
             "player": {
                 "playerName": self.player.playerName,
                 "playerRating": self.player.playerRating,
-                "playerEmail": self.player.playerEmail
-            } if self.player else None,
+  #              "playerEmail": self.player.playerEmail,
+            }
+            if self.player
+            else None,
             "division": {
                 "title": self.division.title,
-                "description": self.division.description
-            } if self.division else None,
+                "description": self.division.description,
+            }
+            if self.division
+            else None,
             "payment": self.payment.to_dict() if self.payment else None,
             "dateCreated": self.dateCreated.isoformat()
             if self.dateCreated
@@ -326,34 +335,44 @@ class Ticket(db.Model):
         }
 
 
-class PushRequest(db.Model):
+class PesapalInterimPayment(db.Model):
     """
-    PushRequest model for tracking M-Pesa STK push requests
+    PesapalInterimPayment model for tracking Pesapal payment requests
     """
 
-    __tablename__ = "pushrequest"
+    _tablename_ = "pesapal_interim_payment"
 
-    pushRequestId = db.Column(db.Integer, primary_key=True)
+    pesapalInterimPaymentId = db.Column(
+        db.Integer, primary_key=True, autoincrement=True
+    )
     paymentId = db.Column(
         db.Integer,
         db.ForeignKey("payment.paymentId", ondelete="CASCADE"),
         nullable=False,
     )
-    checkoutRequestId = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    status = db.Column(db.String(30), default="SAVED")
+    iframeSrc = db.Column(db.String(255), nullable=False)
+    orderTrackingId = db.Column(db.String(255), nullable=False)
+    merchantReference = db.Column(db.String(255), nullable=False)
     dateCreated = db.Column(db.DateTime, default=func.now())
     lastUpdated = db.Column(
         db.DateTime, default=func.now(), onupdate=func.now()
     )
 
     # Relationship with Payment model
-    payment = db.relationship("Payment", back_populates="push_requests")
+    payment = db.relationship("Payment", back_populates="interim_payments")
 
     def to_dict(self):
-        """Convert push request object to dictionary"""
+        """Convert pesapal interim payment object to dictionary"""
         return {
-            "pushRequestId": self.pushRequestId,
+            "pesapalInterimPaymentId": self.pesapalInterimPaymentId,
             "paymentId": self.paymentId,
-            "checkoutRequestId": self.checkoutRequestId,
+            "amount": float(self.amount),
+            "status": self.status,
+            "iframeSrc": self.iframeSrc,
+            "orderTrackingId": self.orderTrackingId,
+            "merchantReference": self.merchantReference,
             "dateCreated": self.dateCreated.isoformat()
             if self.dateCreated
             else None,
@@ -363,81 +382,242 @@ class PushRequest(db.Model):
         }
 
 
-# Helper functions for M-Pesa integration
+# Helper functions for Pesapal integration
+def split_full_name(full_name):
+    """
+    Split a full name into first name, middle name, and last name parts
+
+    Parameters:
+        full_name (str): Full name to split
+
+    Returns:
+        tuple: (first_name, middle_name, last_name)
+    """
+    # Split the name by spaces
+    name_parts = full_name.split()
+
+    # Check how many parts the name has
+    if len(name_parts) == 2:  # First and last name only
+        first_name, last_name = name_parts
+        middle_name = ""
+    elif len(name_parts) > 2:  # First, middle, and last name
+        first_name = name_parts[0]
+        middle_name = " ".join(name_parts[1:-1])
+        last_name = name_parts[-1]
+    else:
+        first_name = full_name
+        middle_name = last_name = ""
+
+    return first_name, middle_name, last_name
+
+
 def get_access_token():
     """
-    Gets an access token from the Safaricom M-Pesa API
+    Retrieves 5 minute access token from PesaPal.
 
     Returns:
-        str: Access token if successful, None otherwise
+        dict: Access token response
     """
-    url = os.path.join(
-        current_app.config["MPESA_BASE_URL"],
-        current_app.config["MPESA_ACCESS_TOKEN_URL"],
-    )
-    headers = {"Content-Type": "application/json"}
-    auth = (
-        current_app.config["MPESA_CONSUMER_KEY"],
-        current_app.config["MPESA_CONSUMER_SECRET"],
+    headers = {"accept": "text/plain", "content-type": "application/json"}
+    post_data = {
+        "consumer_key": current_app.config["PESAPAL_CONSUMER_KEY"],
+        "consumer_secret": current_app.config["PESAPAL_CONSUMER_SECRET"],
+    }
+    end_point = os.path.join(
+        current_app.config["PESAPAL_BASE_URL"], "api/Auth/RequestToken"
     )
 
+    
+	
+    return make_request(end_point, headers, post_data)
+
+
+def get_registered_ipn(access_token):
+    """
+    Get registered IPN from PesaPal
+
+    Parameters:
+        access_token (str): Access token received from get_access_token
+
+    Returns:
+        dict: Registered IPN response
+    """
+    headers = {
+        "accept": "text/plain",
+        "content-type": "application/json",
+        "authorization": f"Bearer {access_token}",
+    }
+    end_point = os.path.join(
+        current_app.config["PESAPAL_BASE_URL"], "api/URLSetup/GetIpnList"
+    )
+    return make_request(end_point, headers)
+
+
+def get_notification_id(access_token, callback_url):
+    """
+    Get notification ID for IPN from PesaPal
+
+    Parameters:
+        access_token (str): Access token received from get_access_token
+        callback_url (str): Callback URL for IPN
+
+    Returns:
+        dict: Notification ID response
+    """
+    headers = {
+        "accept": "text/plain",
+        "content-type": "application/json",
+        "authorization": f"Bearer {access_token}",
+    }
+    post_data = {"ipn_notification_type": "GET", "url": callback_url}
+    end_point = os.path.join(
+        current_app.config["PESAPAL_BASE_URL"],
+        "api/URLSetup/RegisterIPN",
+    )
+    return make_request(end_point, headers, post_data)
+
+
+def get_merchant_order_url(details, access_token, subscription_details=None):
+    """
+    Get merchant order URL from PesaPal
+
+    Parameters:
+        details (dict): Dict object containing order details
+        access_token (str): Access token received from get_access_token
+        subscription_details (dict, optional): Dict object containing subscription details
+
+    Returns:
+        dict: Merchant order URL response
+    """
+    headers = {
+        "accept": "text/plain",
+        "content-type": "application/json",
+        "authorization": f"Bearer {access_token}",
+    }
+    post_data = {
+        "language": details.get("language", "EN"),
+        "currency": details.get("currency", "KES"),
+        "amount": details.get("amount", 1.0),
+        "id": details.get("id", datetime.now().strftime("%Y%m%d%H%M%S")),
+        "description": details.get("description", ""),
+        "billing_address": {
+            "country_code": "KE",
+            "phone_number": details.get("phone_number", ""),
+            #"email_address": details.get("email_address", ""),
+            "first_name": details.get("first_name", ""),
+            "middle_name": details.get("middle_name", ""),
+            "last_name": details.get("last_name", ""),
+            "line_1": details.get("line_1", ""),
+            "line_2": details.get("line_2", ""),
+            "city": details.get("city", ""),
+            "state": details.get("state", ""),
+            "postal_code": details.get("postal_code", ""),
+            "zip_code": details.get("zip_code", ""),
+        },
+        "callback_url": details.get("callback_url"),
+        "notification_id": details.get("notification_id"),
+        "terms_and_conditions_id": details.get("terms_and_conditions_id"),
+    }
+
+    # Check if subscription is activated
+    if subscription_details:
+        post_data.update(subscription_details)
+
+    # Send request
+    end_point = os.path.join(
+        current_app.config["PESAPAL_BASE_URL"],
+        "api/Transactions/SubmitOrderRequest",
+    )
+    return make_request(end_point, headers, post_data)
+
+
+def get_transaction_status(order_tracking_id, access_token):
+    """
+    Get transaction status from PesaPal
+
+    Parameters:
+        order_tracking_id (str): Order tracking ID from get_merchant_order_url
+        access_token (str): Access token received from get_access_token
+
+    Returns:
+        dict: Transaction status response
+    """
+    headers = {
+        "accept": "text/plain",
+        "content-type": "application/json",
+        "authorization": f"Bearer {access_token}",
+    }
+    end_point = (
+        current_app.config["PESAPAL_BASE_URL"]
+        + "/api/Transactions/GetTransactionStatus?"
+        + f"orderTrackingId={order_tracking_id}"
+    )
+    return make_request(end_point, headers)
+
+
+def make_request(url, headers, post_data=None):
+    """
+    Helper function to make HTTP requests
+
+    Parameters:
+        url (str): Endpoint URL
+        headers (dict): HTTP headers
+        post_data (dict, optional): Data to be posted
+
+    Returns:
+        dict: Decoded JSON response
+    """
     try:
-        response = requests.get(url, headers=headers, auth=auth)
+        if post_data:
+            response = requests.post(
+                url, headers=headers, data=json.dumps(post_data)
+            )
+        else:
+            response = requests.get(url, headers=headers)
+
         response.raise_for_status()
-        result = response.json()
-        return result.get("access_token")
+        return response.json()
 
     except requests.exceptions.RequestException as e:
-        print(f"Error getting access token: {str(e)}")
-        return None
+        return {"error": str(e)}
 
 
-def format_phone_number(phone_number):
+# Generate hash for secure payment links
+def generate_hash(interim_payment_id):
     """
-    Formats a phone number to the required format for M-Pesa API (2547XXXXXXXX)
+    Generate a secure hash for interim payment links
 
-    Args:
-        phone_number (str): Phone number to format
+    Parameters:
+        interim_payment_id (int): Interim payment ID
 
     Returns:
-        str: Formatted phone number
+        str: Secure hash
     """
-    # Remove any non-digit characters
-    phone_number = "".join(filter(str.isdigit, phone_number))
-
-    # Check if the number starts with '0' and replace with '254'
-    if phone_number.startswith("0"):
-        phone_number = "254" + phone_number[1:]
-
-    # Check if the number starts with '+254' and remove the '+'
-    elif phone_number.startswith("+254"):
-        phone_number = phone_number[1:]
-
-    # Check if the number doesn't have the country code and add it
-    elif not phone_number.startswith("254"):
-        phone_number = "254" + phone_number
-
-    return phone_number
+    hash_string = f"{interim_payment_id}{app.config['FLASK_SECRET_KEY']}"
+    return base64.b64encode(hash_string.encode()).decode()
 
 
 # Routes
 # Set your deadline here
 KENYA_TZ = timezone(timedelta(hours=3))
-DEADLINE = datetime(2025, 8, 1, 23, 59, 59, tzinfo=KENYA_TZ)
+DEADLINE = datetime(2025, 12, 31, 23, 59, 59, tzinfo=KENYA_TZ)
+
 
 def check_deadline():
     """Check if current time is past the deadline"""
     current_time = datetime.now(KENYA_TZ)
     return current_time > DEADLINE
 
+
 @app.before_request
 def before_request():
     """Check deadline before every request"""
     # Skip deadline check for specific routes
-    excluded_routes = ['deadline_passed', 'static']
-    
+    excluded_routes = ["deadline_passed", "static"]
+
     if request.endpoint not in excluded_routes and check_deadline():
-        return redirect(url_for('deadline_passed'))
+        return redirect(url_for("deadline_passed"))
+
 
 @app.route("/deadline-passed")
 def deadline_passed():
@@ -445,35 +625,32 @@ def deadline_passed():
     deadline_formatted = DEADLINE.strftime("%B %d, %Y at %I:%M %p UTC")
     return render_template("deadline_passed.html", deadline=deadline_formatted)
 
+
 @app.route("/")
-# @deadline_required
 def index():
     """Root endpoint"""
     return render_template("index.html")
+
 
 @app.route("/api/check-deadline")
 def api_check_deadline():
     """API endpoint to check deadline status"""
     is_past = check_deadline()
     time_remaining = None
-    
+
     if not is_past:
         current_time = datetime.now(KENYA_TZ)
         time_diff = DEADLINE - current_time
         days = time_diff.days
         hours, remainder = divmod(time_diff.seconds, 3600)
         minutes, _ = divmod(remainder, 60)
-        time_remaining = {
-            "days": days,
-            "hours": hours,
-            "minutes": minutes
-        }
-    
+        time_remaining = {"days": days, "hours": hours, "minutes": minutes}
+
     return {
         "deadline_passed": is_past,
         "deadline": DEADLINE.isoformat(),
         "current_time": datetime.now(KENYA_TZ).isoformat(),
-        "time_remaining": time_remaining
+        "time_remaining": time_remaining,
     }
 
 
@@ -486,7 +663,9 @@ def get_divisions():
         JSON: List of divisions
     """
     divisions = Division.query.all()
-    return jsonify({"divisions": [division.to_dict() for division in divisions]})
+    return jsonify(
+        {"divisions": [division.to_dict() for division in divisions]}
+    )
 
 
 @app.route("/api/divisions/<int:division_id>", methods=["GET"])
@@ -576,19 +755,21 @@ def purchase_ticket():
     available_players = Player.query.filter(
         ~Player.playerId.in_(players_with_tickets)
     ).all()
-    
+
     divisions = Division.query.all()
-    
-    return jsonify({
-        "players": [player.to_dict() for player in available_players],
-        "divisions": [division.to_dict() for division in divisions]
-    })
+
+    return jsonify(
+        {
+            "players": [player.to_dict() for player in available_players],
+            "divisions": [division.to_dict() for division in divisions],
+        }
+    )
 
 
 @app.route("/api/make-payment", methods=["POST"])
 def make_payment():
     """
-    Endpoint to initiate M-Pesa payment for multiple players
+    Endpoint to initiate Pesapal payment for multiple players
 
     Expected JSON payload:
     {
@@ -597,7 +778,8 @@ def make_payment():
             {"playerId": 2, "divisionId": 2}
         ],
         "customerName": "John Doe",
-        "phoneNumber": "254712345678"
+        "phoneNumber": "254712345678",
+        "email": "john@example.com"  // Added email field for Pesapal
     }
 
     Returns:
@@ -607,7 +789,7 @@ def make_payment():
 
     try:
         # Validate required fields
-        required_fields = ["players", "customerName", "phoneNumber"]
+        required_fields = ["players", "customerName"] #"phoneNumber" ] #"email"]
         for field in required_fields:
             if field not in data:
                 return (
@@ -616,7 +798,10 @@ def make_payment():
                 )
 
         if not isinstance(data["players"], list) or len(data["players"]) == 0:
-            return jsonify({"error": "At least one player must be selected"}), 400
+            return (
+                jsonify({"error": "At least one player must be selected"}),
+                400,
+            )
 
         # Validate and calculate total amount
         total_amount = 0
@@ -625,50 +810,86 @@ def make_payment():
 
         for player_data in data["players"]:
             if "playerId" not in player_data or "divisionId" not in player_data:
-                return jsonify({"error": "Each player must have playerId and divisionId"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Each player must have playerId and divisionId"
+                        }
+                    ),
+                    400,
+                )
 
             # Check if player exists
             player = Player.query.get(player_data["playerId"])
             if not player:
-                return jsonify({"error": f"Player with ID {player_data['playerId']} not found"}), 404
+                return (
+                    jsonify(
+                        {
+                            "error": f"Player with ID {player_data['playerId']} not found"
+                        }
+                    ),
+                    404,
+                )
 
             # Check if player already has a ticket
-            existing_ticket = Ticket.query.filter_by(playerId=player.playerId).first()
+            existing_ticket = Ticket.query.filter_by(
+                playerId=player.playerId
+            ).first()
             if existing_ticket:
-                return jsonify({"error": f"Player {player.playerName} is already registered"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": f"Player {player.playerName} is already registered"
+                        }
+                    ),
+                    400,
+                )
 
             # Check if division exists
             division = Division.query.get(player_data["divisionId"])
             if not division:
-                return jsonify({"error": f"Division with ID {player_data['divisionId']} not found"}), 404
+                return (
+                    jsonify(
+                        {
+                            "error": f"Division with ID {player_data['divisionId']} not found"
+                        }
+                    ),
+                    404,
+                )
 
             # Check if player's rating is within division's rating band
-            if not (division.minRating <= player.playerRating <= division.maxRating):
-                return jsonify({
-                    "error": f"Player {player.playerName} (rating: {player.playerRating}) cannot play in {division.title} "
-                           f"(rating range: {division.minRating}-{division.maxRating})"
-                }), 400
+            if not (
+                division.minRating <= player.playerRating <= division.maxRating
+            ):
+                return (
+                    jsonify(
+                        {
+                            "error": f"Player {player.playerName} (rating: {player.playerRating}) cannot play in {division.title} "
+                            f"(rating range: {division.minRating}-{division.maxRating})"
+                        }
+                    ),
+                    400,
+                )
 
             # Add to total amount
             total_amount += float(division.price)
-            
-            # Store for ticket creation
-            player_registrations.append({
-                "player": player,
-                "division": division,
-                "playerId": player.playerId,
-                "divisionId": division.divisionId
-            })
-            
-            registered_players.append(player.playerName)
 
-        # Format phone number
-        formatted_phone = format_phone_number(data["phoneNumber"])
+            # Store for ticket creation
+            player_registrations.append(
+                {
+                    "player": player,
+                    "division": division,
+                    "playerId": player.playerId,
+                    "divisionId": division.divisionId,
+                }
+            )
+
+            registered_players.append(player.playerName)
 
         # Create payment record first
         new_payment = Payment(
             customerName=data["customerName"],
-            phoneNumber=formatted_phone,
+            #phoneNumber=data["phoneNumber"],
             totalAmount=total_amount,
             paymentStatus="Pending",
         )
@@ -689,279 +910,422 @@ def make_payment():
 
         db.session.flush()  # Get the ticket IDs without committing
 
-        # Get access token for M-Pesa API
-        access_token = get_access_token()
+        # Get access token for Pesapal API
+        access_token = get_access_token().get("token")
+
+
         if not access_token:
             db.session.rollback()
-            return jsonify({"error": "Failed to get M-Pesa access token"}), 500
+            return jsonify({"error": "Failed to get Pesapal access token"}), 500
 
-        # Prepare STK push request
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        password = base64.b64encode(
-            (
-                current_app.config["MPESA_BUSINESS_SHORT_CODE"]
-                + current_app.config["MPESA_PASSKEY"]
-                + timestamp
-            ).encode()
-        ).decode()
 
-        stk_push_url = os.path.join(
-            current_app.config["MPESA_BASE_URL"],
-            current_app.config["MPESA_STK_PUSH_URL"],
-        )
-        print(f"This is the STK PUSH URL to Safaricom: {stk_push_url}")
+        # Get IPN ID for callbacks
+        ipn_url =  url_for("pesapal_ipn", _external=True)
+        ipn_response = get_notification_id(access_token, ipn_url)
+        if "error" in ipn_response or "ipn_id" not in ipn_response:
+            db.session.rollback()
+            return jsonify({"error": "Failed to register Pesapal IPN URL"}), 500
 
-        stk_push_headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + access_token,
-        }
+        ipn_id = ipn_response["ipn_id"]
 
         # Create description of registered players
-        players_description = ", ".join(registered_players[:3])  # Limit for description length
+        players_description = ", ".join(
+            registered_players[:3]
+        )  # Limit for description length
         if len(registered_players) > 3:
             players_description += f" and {len(registered_players) - 3} more"
 
-        stk_push_payload = {
-            "BusinessShortCode": current_app.config[
-                "MPESA_BUSINESS_SHORT_CODE"
-            ],
-            "Password": password,
-            "Timestamp": timestamp,
-            "TransactionType": "CustomerBuyGoodsOnline",
-            "Amount": int(total_amount),  # Amount must be an integer
-            "PartyA": formatted_phone,
-            "PartyB": current_app.config["MPESA_TILL_NUMBER"],
-            "PhoneNumber": formatted_phone,
-            "CallBackURL": current_app.config["MPESA_CALLBACK_URL"],
-            "AccountReference": f"Player Registration",
-            "TransactionDesc": f"Registration for {len(registered_players)} player(s)",
-        }
-
-        # Send STK push request
-        response = requests.post(
-            stk_push_url, headers=stk_push_headers, json=stk_push_payload
+        # Split customer name for Pesapal
+        first_name, middle_name, last_name = split_full_name(
+            data["customerName"]
         )
 
-        mpesa_response = response.json()
-        print(mpesa_response)
+        # Create payment request
+        payment_request = {
+            "id": f"SCR-{new_payment.paymentId}",
+            "amount": total_amount,
+            "description": f"Registration for {players_description}",
+            "callback_url": url_for("pesapal_callback", _external=True),
+            "notification_id": ipn_id,
+            #"email_address": data["email"],
+#            "phone_number": data["phoneNumber"],
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "last_name": last_name,
+            "currency": "KES",
+        }
 
-        # Check if STK push was successful
-        if (
-            "ResponseCode" in mpesa_response
-            and mpesa_response["ResponseCode"] == "0"
-        ):
-            # Create PushRequest record
-            checkout_request_id = mpesa_response.get("CheckoutRequestID")
-            
-            push_request = PushRequest(
-                paymentId=new_payment.paymentId,
-                checkoutRequestId=checkout_request_id,
-            )
-            db.session.add(push_request)
+        # Get order URL from Pesapal
+        iframe_response = get_merchant_order_url(payment_request, access_token)
 
-            db.session.commit()
-
-            return jsonify(
-                {
-                    "message": "Payment initiated successfully",
-                    "totalAmount": total_amount,
-                    "playersRegistered": len(registered_players),
-                    "players": registered_players,
-                    "paymentId": new_payment.paymentId,
-                    "ticketIds": [ticket.ticketId for ticket in new_tickets],
-                    "checkoutRequestId": checkout_request_id,
-                    "responseDescription": mpesa_response.get(
-                        "ResponseDescription", ""
-                    ),
-                }
-            )
-
-        else:
+        if not  iframe_response.get("order_tracking_id") :
             db.session.rollback()
             return (
                 jsonify(
                     {
-                        "error": "Failed to initiate payment",
-                        "mpesaResponse": mpesa_response,
+                        "error": "Failed to generate Pesapal payment URL",
+                       
+                        "details": iframe_response,
                     }
                 ),
                 500,
             )
 
-    except Exception as e:
+        # Create PesapalInterimPayment record
+        interim_payment = PesapalInterimPayment(
+            paymentId=new_payment.paymentId,
+            amount=total_amount,
+            status="SAVED",
+            iframeSrc=iframe_response["redirect_url"],
+            orderTrackingId=iframe_response["order_tracking_id"],
+            merchantReference=iframe_response.get(
+                "merchant_reference", f"SCR-{new_payment.paymentId}"
+            ),
+        )
+        db.session.add(interim_payment)
+
+        # Commit all changes
+        db.session.commit()
+
+        # Generate secure hash for redirect
+        payment_hash = generate_hash(interim_payment.pesapalInterimPaymentId)
+
+        return jsonify(
+            {
+                "message": "Payment initiated successfully",
+                "totalAmount": total_amount,
+                "playersRegistered": len(registered_players),
+                "players": registered_players,
+                "paymentId": new_payment.paymentId,
+                "ticketIds": [ticket.ticketId for ticket in new_tickets],
+                "orderTrackingId": iframe_response["order_tracking_id"],
+                "paymentUrl": iframe_response["redirect_url"],
+                "iframe_redirect_url": url_for(
+                    "pesapal_iframe_redirect",
+                    interim_payment_id=interim_payment.pesapalInterimPaymentId,
+                    payment_hash=payment_hash,
+                ),
+            }
+        )
+
+    except IOError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/query-payment-status", methods=["POST"])
-def perform_stk_query():
+@app.route("/pesapal/iframe/<int:interim_payment_id>/redirect/<payment_hash>")
+def pesapal_iframe_redirect(interim_payment_id, payment_hash):
     """
-    Endpoint to query the status of an STK push transaction
+    Endpoint to display Pesapal iframe
+
+    Parameters:
+        interim_payment_id (int): Interim payment ID
+        payment_hash (str): Secure hash to verify access
+
+    Returns:
+        HTML: Iframe page
+    """
+    # Verify hash
+    valid_hash = generate_hash(interim_payment_id)
+    if payment_hash != valid_hash:
+        return (
+            render_template("error.html", message="Invalid payment link"),
+            403,
+        )
+
+    # Get interim payment
+    interim_payment = PesapalInterimPayment.query.get_or_404(interim_payment_id)
+
+    # Get payment
+    payment = Payment.query.get_or_404(interim_payment.paymentId)
+
+    # Get tickets
+    tickets = Ticket.query.filter_by(paymentId=payment.paymentId).all()
+
+    return render_template(
+        "pesapal_iframe.html",
+        iframe_src=interim_payment.iframeSrc,
+        payment=payment,
+        tickets=tickets,
+    )
+
+
+@app.route("/api/query-payment-status", methods=["POST"])
+def query_payment_status():
+    """
+    Endpoint to query the status of a Pesapal transaction
 
     Expected JSON payload:
     {
-        "checkoutRequestId": "ws_CO_DMZ_12345678901234567"
+        "orderTrackingId": "4e9d1490-45a0-4f50-9a1f-b08c0f8e41a0"
     }
 
     Returns:
-        JSON: STK query result or error
+        JSON: Transaction status result or error
     """
     data = request.get_json()
-    checkout_request_id = data.get("checkoutRequestId")
+    order_tracking_id = data.get("orderTrackingId")
 
-    if not checkout_request_id:
-        return jsonify({"error": "Checkout Request ID not provided"}), 400
+    if not order_tracking_id:
+        return jsonify({"error": "Order Tracking ID not provided"}), 400
 
     try:
-        # Get access token for M-Pesa API
-        access_token = get_access_token()
-        if not access_token:
-            return jsonify({"error": "Failed to get M-Pesa access token"}), 500
+        # Get access token for Pesapal API
+        access_token_response = get_access_token()
+        if (
+            "error" in access_token_response
+            or "token" not in access_token_response
+        ):
+            return jsonify({"error": "Failed to get Pesapal access token"}), 500
 
-        # Prepare STK query request
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        password = base64.b64encode(
-            (
-                current_app.config["MPESA_BUSINESS_SHORT_CODE"]
-                + current_app.config["MPESA_PASSKEY"]
-                + timestamp
-            ).encode()
-        ).decode()
+        access_token = access_token_response["token"]
 
-        query_url = os.path.join(
-            current_app.config["MPESA_BASE_URL"],
-            current_app.config["MPESA_STK_QUERY_URL"],
+        # Get transaction status
+        status_response = get_transaction_status(
+            order_tracking_id, access_token
         )
 
-        query_headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + access_token,
-        }
+        # Find the associated interim payment
+        interim_payment = PesapalInterimPayment.query.filter_by(
+            orderTrackingId=order_tracking_id
+        ).first()
 
-        query_payload = {
-            "BusinessShortCode": current_app.config[
-                "MPESA_BUSINESS_SHORT_CODE"
-            ],
-            "Password": password,
-            "Timestamp": timestamp,
-            "CheckoutRequestID": checkout_request_id,
-        }
+        if not interim_payment:
+            return (
+                jsonify(
+                    {
+                        "error": "No matching interim payment found",
+                        "pesapalResponse": status_response,
+                    }
+                ),
+                404,
+            )
 
-        # Send STK query request
-        response = requests.post(
-            query_url, headers=query_headers, json=query_payload
+        # Get the associated payment
+        payment = Payment.query.get(interim_payment.paymentId)
+        if not payment:
+            return (
+                jsonify(
+                    {
+                        "error": "No matching payment found",
+                        "pesapalResponse": status_response,
+                    }
+                ),
+                404,
+            )
+
+        # Return the status
+        return jsonify(
+            {
+                "status": status_response.get(
+                    "payment_status_description", "Unknown"
+                ),
+                "payment": payment.to_dict(),
+                "pesapalResponse": status_response,
+            }
         )
-        print(response.json())
-
-        return jsonify(response.json())
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/mpesa-callback", methods=["POST"])
-def callback_function():
+@app.route("/pesapal/ipn", methods=["GET"])
+def pesapal_ipn():
     """
-    Callback endpoint for M-Pesa payment notifications
-
-    Expected payload from M-Pesa API after payment
+    IPN endpoint for Pesapal payment notifications
 
     Returns:
         JSON: Acknowledgement message
     """
     try:
-        response = request.get_json()
-        print("This is a response from Safaricom on our callback url")
-        print("Wow it worked. We are happy!")
-        print(response)
+        # Get parameters from request
+        order_tracking_id = request.args.get("OrderTrackingId")
 
-        callback_data = response.get("Body", {}).get("stkCallback", {})
+        if not order_tracking_id:
+            return (
+                jsonify(
+                    {"error": "Invalid IPN data - missing OrderTrackingId"}
+                ),
+                400,
+            )
 
-        # Check if callback data exists
-        if not callback_data:
-            return jsonify({"error": "Invalid callback data"}), 400
+        # Get access token for Pesapal API
+        access_token = get_access_token().get("token")
+        if not access_token:
+            db.session.rollback()
+            return jsonify({"error": "Failed to get Pesapal access token"}), 500
 
-        # Get result code and checkout request ID
-        result_code = callback_data.get("ResultCode")
-        checkout_request_id = callback_data.get("CheckoutRequestID")
+        # Get transaction status
+        status = get_transaction_status(order_tracking_id, access_token)
+        payment_status = status.get("payment_status_description")
 
-        # Find the associated push request
-        push_request = PushRequest.query.filter_by(
-            checkoutRequestId=checkout_request_id
+        # Find the associated interim payment
+        interim_payment = PesapalInterimPayment.query.filter_by(
+            orderTrackingId=order_tracking_id
         ).first()
 
-        if not push_request:
-            return jsonify({"error": "No matching push request found"}), 404
+        if not interim_payment:
+            return jsonify({"error": "No matching interim payment found"}), 404
 
         # Get the associated payment
-        payment = Payment.query.get(push_request.paymentId)
-
+        payment = Payment.query.get(interim_payment.paymentId)
         if not payment:
             return jsonify({"error": "No matching payment found"}), 404
 
-        # Process successful payment
-        if result_code == 0:
-            # Extract payment details
-            callback_metadata = callback_data.get("CallbackMetadata", {}).get(
-                "Item", []
-            )
-
-            # Extract amount, receipt number, and transaction date
-            receipt_number = next(
-                (
-                    item.get("Value")
-                    for item in callback_metadata
-                    if item.get("Name") == "MpesaReceiptNumber"
-                ),
-                None,
-            )
-
-            transaction_date_str = next(
-                (
-                    item.get("Value")
-                    for item in callback_metadata
-                    if item.get("Name") == "TransactionDate"
-                ),
-                None,
-            )
-
-            # Convert transaction date string to datetime
-            transaction_date = None
-            if transaction_date_str:
-                try:
-                    # Format from Safaricom is typically YYYYMMDDHHmmss
-                    transaction_date = datetime.strptime(
-                        str(transaction_date_str), "%Y%m%d%H%M%S"
-                    )
-                except ValueError:
-                    # If that fails, store as string
-                    transaction_date = datetime.now()
-
-            # Update payment with payment details
+        # Process based on status
+        if payment_status == "Completed":
+            # Update payment
             payment.paymentStatus = "Paid"
-            payment.mpesaReceiptNumber = receipt_number
-            payment.transactionDate = transaction_date
+            payment.receiptNumber = status.get("confirmation_code")
+            payment.paymentMethod = (
+                f"Pesapal - {status.get('payment_method', 'Unknown')}"
+            )
+            payment.transactionDate = datetime.strptime(
+                status.get("created_date", datetime.now().isoformat()),
+                "%Y-%m-%dT%H:%M:%S.%f"
+                if "." in status.get("created_date", "")
+                else "%Y-%m-%dT%H:%M:%S",
+            )
+
+            # Update interim payment
+            interim_payment.status = "COMPLETED"
 
             db.session.commit()
 
             # Send ticket confirmation emails to all players
-            send_ticket_confirmation_emails(payment.paymentId)
+           # send_ticket_confirmation_emails(payment.paymentId)
 
-            return jsonify({"message": "Payment completed successfully"})
+            return jsonify({"message": "Payment processed successfully"}), 200
 
-        # Process failed payment
-        else:
-            # Update payment status to Failed
+        elif payment_status == "Failed":
+            # Update statuses
             payment.paymentStatus = "Failed"
+            interim_payment.status = "FAILED"
             db.session.commit()
 
-            return jsonify(
-                {"message": "Payment failed", "result_code": result_code}
+            return jsonify({"message": "Failed payment recorded"}), 200
+
+        else:  # Pending or other status
+            return (
+                jsonify(
+                    {
+                        "message": "Payment status updated",
+                        "status": payment_status,
+                    }
+                ),
+                200,
             )
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/pesapal/callback", methods=["GET"])
+def pesapal_callback():
+    """
+    Callback endpoint for Pesapal payment redirect
+
+    Returns:
+        HTML: Redirect to payment result page
+    """
+    # Get parameters from request
+    order_tracking_id = request.args.get("OrderTrackingId")
+
+    if not order_tracking_id:
+        return (
+            render_template(
+                "error.html",
+                message="Invalid callback data - missing OrderTrackingId",
+            ),
+            400,
+        )
+
+    # Find the associated interim payment
+    interim_payment = PesapalInterimPayment.query.filter_by(
+        orderTrackingId=order_tracking_id
+    ).first()
+
+    if not interim_payment:
+        return (
+            render_template("error.html", message="Payment record not found"),
+            404,
+        )
+
+    # Get the associated payment
+    payment = Payment.query.get(interim_payment.paymentId)
+    if not payment:
+        return (
+            render_template("error.html", message="Payment record not found"),
+            404,
+        )
+
+    # Get access token for Pesapal API
+    access_token = get_access_token().get("token")
+    if not access_token:
+        db.session.rollback()
+        return jsonify({"error": "Failed to get Pesapal access token"}), 500
+
+
+    # Get transaction status
+    status = get_transaction_status(order_tracking_id, access_token)
+    payment_status = status.get("payment_status_description")
+
+    # Get tickets
+    tickets = Ticket.query.filter_by(paymentId=payment.paymentId).all()
+
+    # Handle based on status
+    if payment_status == "Completed":
+        # Update payment if not already updated by IPN
+        if payment.paymentStatus != "Paid":
+            payment.paymentStatus = "Paid"
+            payment.receiptNumber = status.get("confirmation_code")
+            payment.paymentMethod = (
+                f"Pesapal - {status.get('payment_method', 'Unknown')}"
+            )
+            payment.transactionDate = datetime.strptime(
+                status.get("created_date", datetime.now().isoformat()),
+                "%Y-%m-%dT%H:%M:%S.%f"
+                if "." in status.get("created_date", "")
+                else "%Y-%m-%dT%H:%M:%S",
+            )
+
+            # Update interim payment
+            interim_payment.status = "COMPLETED"
+            db.session.commit()
+
+            # Send ticket confirmation emails to all players
+            send_ticket_confirmation_emails(payment.paymentId)
+
+        return render_template(
+            "payment_success.html",
+            payment=payment,
+            tickets=tickets,
+            receipt=status.get("confirmation_code"),
+            method=status.get("payment_method", "Unknown"),
+        )
+
+    elif payment_status == "Failed":
+        # Update statuses if not already updated by IPN
+        if payment.paymentStatus != "Failed":
+            payment.paymentStatus = "Failed"
+            interim_payment.status = "FAILED"
+            db.session.commit()
+
+        return render_template(
+            "payment_failed.html",
+            payment=payment,
+            message=status.get(
+                "status_reason", "Payment failed. Please try again."
+            ),
+        )
+
+    else:  # Pending or other status
+        return render_template(
+            "payment_pending.html",
+            payment=payment,
+            orderTrackingId=order_tracking_id,
+        )
 
 
 @app.route("/api/tickets/<int:ticket_id>", methods=["GET"])
@@ -1001,7 +1365,7 @@ def get_payment(payment_id):
 
     # Get associated tickets
     tickets = Ticket.query.filter_by(paymentId=payment_id).all()
-    
+
     payment_data = payment.to_dict()
     payment_data["tickets"] = [ticket.to_dict() for ticket in tickets]
 
