@@ -9,14 +9,17 @@ load_dotenv()  # Looks for .env in current directory
 
 SQLALCHEMY_DATABASE_URI= "sqlite:///sk_tickets.db"
 SQLALCHEMY_TRACK_MODIFICATIONS= False 
-FLASK_SECRET_KEY="a867431a0ab449d8c967e1c950eba612a289a505a7938c6c"
 MPESA_BASE_URL= "https://api.safaricom.co.ke"
 MPESA_ACCESS_TOKEN_URL= "oauth/v1/generate?grant_type=client_credentials"
 MPESA_STK_PUSH_URL= "mpesa/stkpush/v1/processrequest"
 MPESA_STK_QUERY_URL="mpesa/stkpushquery/v1/query"
 MPESA_CALLBACK_URL="https://66769a289536.ngrok-free.app/api/mpesa-callback"
-
-MPESA_PASSKEY= "27a4ec97fc2e5e9cfd7aea12d1308389bcfaa938bbb8d7f933c72a9a8f14529a"
+MPESA_PASSKEY= os.getenv('MPESA_PASSKEY')
+MPESA_CONSUMER_KEY=  os.getenv('MPESA_CONSUMER_KEY')
+MPESA_CONSUMER_SECRET=  os.getenv('MPESA_CONSUMER_SECRET')
+MPESA_TILL_NUMBER=  os.getenv('MPESA_TILL_NUMBER')
+MPESA_BUSINESS_SHORT_CODE=  os.getenv('MPESA_BUSINESS_SHORT_CODE')
+FLASK_SECRET_KEY=  os.getenv('FLASK_SECRET_KEY')
 
 # Email Configuration
 MAIL_SERVER = 'smtp.gmail.com'
