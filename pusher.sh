@@ -3,16 +3,6 @@
 # Navigate to the directory containing your local Git repository
 cd "$(dirname "$0")"
 
-# Load variables while ignoring lines starting with '#' and empty lines
-while IFS= read -r line; do
-  if [[ "$line" =~ ^[^#]*= ]] && [[ ! "$line" =~ ^[[:space:]]*# ]]; then
-    export "$line"
-  fi
-done < .env
-
-# move to primary dir
-#cd ..
-
 # Read user input
 read -p "what change are we making today: " modification
 
@@ -23,7 +13,7 @@ read -p "what change are we making today: " modification
 #pip freeze > requirements.txt
 
 #initialize branch name 
-branch='main'
+branch='daraja'
 
 #initialize repo
 # git init

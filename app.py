@@ -29,16 +29,16 @@ app.config["MPESA_BASE_URL"] = MPESA_BASE_URL
 app.config["MPESA_ACCESS_TOKEN_URL"] = MPESA_ACCESS_TOKEN_URL
 app.config["MPESA_STK_PUSH_URL"] = MPESA_STK_PUSH_URL
 app.config["MPESA_STK_QUERY_URL"] = MPESA_STK_QUERY_URL
-app.config["MPESA_BUSINESS_SHORT_CODE"] = "174379"
+app.config["MPESA_BUSINESS_SHORT_CODE"] = "9512304"
 app.config["MPESA_PASSKEY"] = MPESA_PASSKEY
-app.config["MPESA_TILL_NUMBER"] = "8976288"
+app.config["MPESA_TILL_NUMBER"] = "974346"
 app.config["MPESA_CALLBACK_URL"] = MPESA_CALLBACK_URL
 app.config[
     "MPESA_CONSUMER_KEY"
-] = "E7RkuNKKVFG3p2nWjEM78RcbFOwH2qb5UHpGvpOhzodFGbHV"
+] = "2X7yDrT5CBwvZ5x3RqCwsvIhGLVEY0pYWiolI9FpvabXjNKP"
 app.config[
     "MPESA_CONSUMER_SECRET"
-] = "tQw44mUODFBqUk25oS5NweJBMrlvdWwkYdap6P3895kekW2LmLFcHT4Lvjr4figm"
+] = "AO2HG9MHcbVA9gNGzrNHhxGbsIpPuOMEHoFT4Uyz4o9yJa0ygtEHhU0EjHIOGJEU"
 
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
@@ -423,7 +423,7 @@ def format_phone_number(phone_number):
 # Routes
 # Set your deadline here
 KENYA_TZ = timezone(timedelta(hours=3))
-DEADLINE = datetime(2025, 8, 1, 23, 59, 59, tzinfo=KENYA_TZ)
+DEADLINE = datetime(2026, 12, 31, 23, 59, 59, tzinfo=KENYA_TZ)
 
 def check_deadline():
     """Check if current time is past the deadline"""
@@ -733,9 +733,11 @@ def make_payment():
             "PartyB": current_app.config["MPESA_TILL_NUMBER"],
             "PhoneNumber": formatted_phone,
             "CallBackURL": current_app.config["MPESA_CALLBACK_URL"],
-            "AccountReference": f"Player Registration",
-            "TransactionDesc": f"Registration for {len(registered_players)} player(s)",
+            "AccountReference": f"PlayerReg",
+            "TransactionDesc": f"PlayerReg",
         }
+
+        print(stk_push_payload['BusinessShortCode'], stk_push_payload['PartyB'])
 
         # Send STK push request
         response = requests.post(
