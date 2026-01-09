@@ -9,4 +9,5 @@
 
 -- PRAGMA foreign_keys = ON;
 
-delete  from ticket; delete from pushrequest; delete from payment;
+-- sqlite3 instance/sk_tickets.db < sql/delete_data.sql 
+delete from ticket; delete from pushrequest; delete from payment;

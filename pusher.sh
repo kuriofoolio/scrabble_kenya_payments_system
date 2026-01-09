@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 read -p "what change are we making today: " modification
 
 #initialize branch name 
-branch='sk-daraja-v1'
+branch='sk-daraja-v2'
 
 #initialize repo
 # git init

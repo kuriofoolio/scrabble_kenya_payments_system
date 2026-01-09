@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+     <link rel="icon" type="image/png+xml" href="static/img/sk_logo.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scrabble Kenya Tournament - Register Players</title>
@@ -34,6 +35,36 @@
           url('/api/placeholder/1920/1080') center/cover no-repeat;
         height: 60vh;
         position: relative;
+        }
+
+        .countdown-container {
+          background: rgba(229, 9, 20, 0.1);
+          border: 2px solid var(--primary);
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-top: 2rem;
+          backdrop-filter: blur(10px);
+        }
+
+        .countdown-box {
+          background: rgba(18, 18, 18, 0.8);
+          border-radius: 8px;
+          padding: 1rem;
+          min-width: 80px;
+        }
+
+        .countdown-value {
+          font-size: 2rem;
+          font-weight: 700;
+          color: var(--primary);
+          line-height: 1;
+        }
+
+        .countdown-label {
+          font-size: 0.75rem;
+          color: var(--gray);
+          text-transform: uppercase;
+          margin-top: 0.25rem;
         }
 
         .navbar {
@@ -216,6 +247,61 @@
           padding: 1rem;
           margin-top: 1rem;
         }
+
+        /* Countdown Timer Styles */
+        .countdown-container {
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: rgba(229, 9, 20, 0.1);
+          border: 2px solid var(--primary);
+          border-radius: 12px;
+          backdrop-filter: blur(10px);
+        }
+
+        .countdown-box {
+          background: rgba(26, 26, 26, 0.8);
+          border: 1px solid #333;
+          border-radius: 8px;
+          padding: 1rem;
+          min-width: 80px;
+          text-align: center;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .countdown-box:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
+        }
+
+        .countdown-value {
+          font-size: 2rem;
+          font-weight: bold;
+          color: var(--primary);
+          line-height: 1;
+          margin-bottom: 0.5rem;
+        }
+
+        .countdown-label {
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          color: var(--gray);
+          letter-spacing: 1px;
+        }
+
+        @media (max-width: 640px) {
+          .countdown-box {
+            min-width: 60px;
+            padding: 0.75rem 0.5rem;
+          }
+
+          .countdown-value {
+            font-size: 1.5rem;
+          }
+
+          .countdown-label {
+            font-size: 0.65rem;
+          }
+        }
     </style>
   </head>
   <body>
@@ -256,9 +342,33 @@
     <!-- Hero Section -->
     <section class="hero flex items-center justify-center px-4">
       <div class="text-center max-w-4xl">
-        <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">Register Players For <span class="text-red-600">Epic Tournaments</span></h1>
-        <p class="text-lg md:text-xl mb-8 max-w-2xl mx-auto">Choose your division and register players for upcoming tournaments. Join the competition and showcase your skills!</p>
-        <a href="#divisions" class="btn-primary px-8 py-3 rounded-full font-medium text-lg inline-block">Register Now</a>
+        <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">Register For <span class="text-red-600">Nairobi</span></h1>
+        <!-- <p class="text-lg md:text-xl mb-8 max-w-2xl mx-auto">Choose your division and register players for upcoming tournaments. Join the competition and showcase your skills!</p> -->
+
+        <!-- Countdown Timer -->
+        <div id="countdown-container" class="countdown-container max-w-1xl mx-auto" style="display: none;">
+          <h3 class="text-lg font-semibold mb-4 text-gray-300">Registration Closes In:</h3>
+          <div class="flex justify-center gap-4 flex-wrap">
+            <div class="countdown-box">
+              <div class="countdown-value" id="countdown-days">--</div>
+              <div class="countdown-label">Days</div>
+            </div>
+            <div class="countdown-box">
+              <div class="countdown-value" id="countdown-hours">--</div>
+              <div class="countdown-label">Hours</div>
+            </div>
+            <div class="countdown-box">
+              <div class="countdown-value" id="countdown-minutes">--</div>
+              <div class="countdown-label">Minutes</div>
+            </div>
+            <div class="countdown-box">
+              <div class="countdown-value" id="countdown-seconds">--</div>
+              <div class="countdown-label">Seconds</div>
+            </div>
+          </div>
+        </div>
+
+        <a href="#divisions" class="btn-primary px-8 py-3 rounded-full font-medium text-lg inline-block mt-6">Register Now</a>
       </div>
     </section>
 
@@ -352,6 +462,26 @@
               </div>
             </div>
 
+            <!-- New Player Registration Section -->
+            <div class="mb-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-600/50 rounded-lg p-4">
+              <div class="flex items-start">
+                <svg class="h-6 w-6 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-yellow-300">🆕 First Time Playing?</p>
+                  <p class="text-xs text-gray-300 mt-1 mb-3">Can't find your name? Register as a new player for the Open Division. You'll automatically be placed in the beginner-friendly Open Division.</p>
+                  <button
+                    id="new-player-btn"
+                    type="button"
+                    class="text-sm px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md font-medium transition-colors"
+                  >
+                    Register as New Player
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div id="players-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
               <!-- Players will be populated here -->
             </div>
@@ -396,6 +526,85 @@
       </div>
     </div>
 
+    <!-- New Player Registration Modal -->
+    <div id="new-player-modal" class="modal">
+      <div class="modal-content p-6 max-w-lg mx-auto">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-2xl font-bold">Register as New Player</h3>
+          <button id="close-new-player-modal" class="text-gray-400 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form id="new-player-form" class="space-y-4">
+          <!-- Info Banner -->
+          <div class="bg-blue-900 border border-blue-700 text-blue-100 p-4 rounded-lg">
+            <p class="text-sm font-medium">ℹ️ New Player Registration</p>
+            <p class="text-xs mt-1">You'll be registered for the <strong>Open Division</strong> (beginner-friendly). <br>Cost: <strong>750 KSh</strong> (division) + <strong>1000 KSh</strong> (membership fee) = <strong>1750 KSh total</strong></p>
+          </div>
+
+          <div>
+            <label for="new-player-name" class="block text-sm font-medium text-gray-400 mb-1">Your Full Name *</label>
+            <input type="text" id="new-player-name" name="playerName" class="w-full px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+          </div>
+
+          <div>
+            <label for="new-player-email" class="block text-sm font-medium text-gray-400 mb-1">Email Address (Optional)</label>
+            <input type="email" id="new-player-email" name="playerEmail" placeholder="For ticket confirmation" class="w-full px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            <p class="text-xs text-gray-500 mt-1">Providing an email will allow you to receive your ticket confirmation</p>
+          </div>
+
+          <div>
+            <label for="new-player-customer-name" class="block text-sm font-medium text-gray-400 mb-1">Payment Name *</label>
+            <input type="text" id="new-player-customer-name" name="customerName" placeholder="Name for M-Pesa payment" class="w-full px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+          </div>
+
+          <div>
+            <label for="new-player-phone" class="block text-sm font-medium text-gray-400 mb-1">M-Pesa Phone Number *</label>
+            <input type="tel" id="new-player-phone" name="phoneNumber" placeholder="e.g. 0712345678" class="w-full px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+          </div>
+
+          <!-- Cost Breakdown -->
+          <div class="bg-gray-800 border border-gray-600 rounded-lg p-4">
+            <h4 class="font-medium mb-2">Cost Breakdown</h4>
+            <div class="space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-400">Open Division Fee:</span>
+                <span>KSh 750</span>
+              </div>
+              <div class="flex justify-between text-yellow-400">
+                <span>Membership Fee:</span>
+                <span>KSh 1000</span>
+              </div>
+              <div class="flex justify-between border-t border-gray-600 pt-2 font-bold text-lg">
+                <span>Total:</span>
+                <span class="text-red-400">KSh 1750</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex space-x-4">
+            <button type="submit" id="submit-new-player" class="flex-1 btn-primary py-3 rounded-md font-medium">
+              Proceed to Payment
+            </button>
+
+            <button id="loading-new-player" type="button" class="hidden flex-1 btn-primary py-3 rounded-md font-medium opacity-75 cursor-not-allowed" disabled>
+              <div class="flex justify-center items-center">
+                <div class="loading-dots flex space-x-2 items-center">
+                  <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
+                  <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
+                  <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
+                </div>
+                <span class="ml-2">Processing...</span>
+              </div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- About Section -->
     <section id="about-us" class="py-16 px-4 md:px-8 bg-gray-900 section">
       <div class="max-w-7xl mx-auto">
@@ -426,7 +635,7 @@
           </div>
           <div class="md:w-1/2">
             <div class="rounded-lg overflow-hidden shadow-xl">
-              <img src="/api/placeholder/600/400" alt="Gaming Tournament" class="w-full">
+              <img src="static/img/IMG_0274.jpeg" alt="Gaming Tournament" class="w-full">
             </div>
           </div>
         </div>
@@ -467,8 +676,8 @@
             <address class="not-italic text-gray-400">
               <p class="mb-2">P.O.BOX 22388 - 00100</p>
               <p class="mb-2">Nairobi, Kenya</p>
-              <p class="mb-2">info@Scrabble Kenya.com</p>
-              <p>+254714666212, +254725037750</p>
+              <p class="mb-2">info@scrabblekenya.com</p>
+              <p>+254735399887, +254721712047</p>
             </address>
           </div>
         </div>
@@ -501,11 +710,22 @@
         const clearSearchBtn = document.getElementById('clear-search');
         const noResultsDiv = document.getElementById('no-results');
 
+        // New player elements
+        const newPlayerBtn = document.getElementById('new-player-btn');
+        const newPlayerModal = document.getElementById('new-player-modal');
+        const closeNewPlayerModalBtn = document.getElementById('close-new-player-modal');
+        const newPlayerForm = document.getElementById('new-player-form');
+        const submitNewPlayerBtn = document.getElementById('submit-new-player');
+        const loadingNewPlayerBtn = document.getElementById('loading-new-player');
+        const newPlayerPhoneInput = document.getElementById('new-player-phone');
+
         // State
         let divisions = [];
         let players = [];
         let filteredPlayers = []; // For search functionality
         let selectedPlayers = new Map(); // Map of playerId -> {player, divisionId}
+        let pendingPaymentId = null; // Track pending payment for cancellation
+        let isPaymentActive = false; // Track if payment polling is active
 
         // Sections animation
         const sections = document.querySelectorAll('.section');
@@ -641,7 +861,9 @@
         // Fetch divisions and players from API
         async function fetchData() {
           try {
-            const response = await fetch('/api/purchase-ticket');
+            // Add cache-busting parameter to prevent browser caching
+            const timestamp = new Date().getTime();
+            const response = await fetch(`/api/purchase-ticket?t=${timestamp}`);
             if (!response.ok) {
               throw new Error('Failed to fetch data');
             }
@@ -775,24 +997,34 @@
             player.playerRating >= division.minRating && player.playerRating <= division.maxRating
           );
 
+          // Check if player needs to pay levy
+          const isPaidUp = player.paidUp === 1;
+          const levyAmount = isPaidUp ? 0 : 1000;
+
           const cardDiv = document.createElement('div');
           cardDiv.className = 'player-card p-4 relative';
           cardDiv.innerHTML = `
             <div class="rating-badge">${player.playerRating}</div>
+            ${!isPaidUp ? '<div class="absolute top-2 right-2 bg-yellow-600 text-white text-xs px-2 py-1 rounded">+KSh 1000 Levy</div>' : ''}
             <div class="mt-8">
               <h4 class="font-bold text-lg mb-2">${player.playerName}</h4>
               <p class="text-sm text-gray-400 mb-3">Rating: ${player.playerRating}</p>
-              ${player.playerEmail ? `<p class="text-xs text-gray-500 mb-3">📧 ${player.playerEmail}</p>` : `<p class="text-xs text-yellow-400 mb-3">⚠️ No email provided - ticket confirmation will not be sent</p>`}
+              ${!isPaidUp ? '<p class="text-xs text-yellow-400 mb-2">⚠️ Not Paid Up - 1000 KSh Membership Fee applies</p>' : '<p class="text-xs text-green-400 mb-2">✓ Paid Up - No levy</p>'}
+             
               <div class="mb-3">
                 <p class="text-xs text-gray-500 mb-1">Eligible Divisions:</p>
                 <div class="space-y-1">
-                  ${eligibleDivisions.map(division => `
+                  ${eligibleDivisions.map(division => {
+                    const divisionPrice = parseFloat(division.price);
+                    const totalPrice = divisionPrice + levyAmount;
+                    return `
                     <label class="flex items-center text-sm">
-                      <input type="radio" name="division_${player.playerId}" value="${division.divisionId}" 
+                      <input type="radio" name="division_${player.playerId}" value="${division.divisionId}"
                              class="mr-2" ${selectedDivision && selectedDivision.divisionId === division.divisionId ? 'checked' : ''}>
-                      <span>${division.title} (KSh ${division.price})</span>
+                      <span>${division.title} ${!isPaidUp ? `(<s>KSh ${divisionPrice}</s> <strong>KSh ${totalPrice}</strong>)` : `(KSh ${divisionPrice})`}</span>
                     </label>
-                  `).join('')}
+                  `;
+                  }).join('')}
                 </div>
               </div>
               <button type="button" class="select-player-btn w-full py-2 px-4 rounded text-sm border border-gray-600 hover:border-red-500 transition-colors"
@@ -857,21 +1089,33 @@
           }
 
           selectedSummary.classList.remove('hidden');
-          
+
           let totalAmount = 0;
           let summaryHTML = '';
 
           selectedPlayers.forEach(({player, division}) => {
-            totalAmount += parseFloat(division.price);
+            const divisionPrice = parseFloat(division.price);
+            const isPaidUp = player.paidUp === 1;
+            const levyAmount = isPaidUp ? 0 : 1000;
+            const playerTotal = divisionPrice + levyAmount;
+
+            totalAmount += playerTotal;
             summaryHTML += `
               <div class="flex justify-between items-center py-2 border-b border-gray-600 last:border-b-0">
                 <div>
                   <span class="font-medium">${player.playerName}</span>
                   <span class="text-sm text-gray-400 ml-2">(Rating: ${player.playerRating})</span>
+                  ${!isPaidUp ? '<span class="text-xs text-yellow-400 ml-2">+Levy</span>' : ''}
                 </div>
                 <div class="text-right">
                   <div class="text-sm text-gray-400">${division.title}</div>
-                  <div class="font-medium">KSh ${division.price}</div>
+                  ${!isPaidUp ? `
+                    <div class="text-xs text-gray-500">Division: KSh ${divisionPrice}</div>
+                    <div class="text-xs text-yellow-400">Levy: KSh ${levyAmount}</div>
+                    <div class="font-medium text-red-400">Total: KSh ${playerTotal}</div>
+                  ` : `
+                    <div class="font-medium">KSh ${divisionPrice}</div>
+                  `}
                 </div>
               </div>
             `;
@@ -881,17 +1125,34 @@
           totalAmountEl.textContent = `KSh ${totalAmount}`;
         }
 
-        // Close modal
-        closeModalBtn.addEventListener('click', () => {
+        // Function to close modal and handle pending payments
+        function closeModal() {
+          // If there's a pending payment, cancel it
+          if (pendingPaymentId) {
+            cancelPayment(pendingPaymentId);
+            pendingPaymentId = null;
+          }
+
+          // Stop payment polling
+          isPaymentActive = false;
+
           registrationModal.classList.remove('show');
           document.body.style.overflow = ''; // Allow scrolling again
+
+          // Reset button states
+          submitRegistrationBtn.classList.remove('hidden');
+          loadingButton.classList.add('hidden');
+        }
+
+        // Close modal
+        closeModalBtn.addEventListener('click', () => {
+          closeModal();
         });
 
         // Close modal when clicking outside
         registrationModal.addEventListener('click', (e) => {
           if (e.target === registrationModal) {
-            registrationModal.classList.remove('show');
-            document.body.style.overflow = ''; // Allow scrolling again
+            closeModal();
           }
         });
 
@@ -943,6 +1204,10 @@
               // If the payment was initiated successfully
               createToast('Payment initiated successfully. Please check your phone to complete the transaction.', 'success');
 
+              // Track the pending payment ID and set payment as active
+              pendingPaymentId = data.paymentId;
+              isPaymentActive = true;
+
               // Start checking status
               if (data.checkoutRequestId) {
                 checkPaymentStatus(data.checkoutRequestId, data.paymentId);
@@ -961,8 +1226,131 @@
           }
         });
 
+        // New Player Modal Handlers
+        newPlayerBtn.addEventListener('click', () => {
+          newPlayerModal.classList.add('show');
+          document.body.style.overflow = 'hidden';
+        });
+
+        closeNewPlayerModalBtn.addEventListener('click', () => {
+          newPlayerModal.classList.remove('show');
+          document.body.style.overflow = '';
+          newPlayerForm.reset();
+        });
+
+        // Close new player modal when clicking outside
+        newPlayerModal.addEventListener('click', (e) => {
+          if (e.target === newPlayerModal) {
+            newPlayerModal.classList.remove('show');
+            document.body.style.overflow = '';
+            newPlayerForm.reset();
+          }
+        });
+
+        // Phone number formatting for new player form
+        newPlayerPhoneInput.addEventListener('input', function(e) {
+          let value = e.target.value;
+          let formatted = formatPhoneNumber(value);
+          e.target.value = formatted;
+        });
+
+        // Handle new player form submission
+        newPlayerForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const formData = new FormData(newPlayerForm);
+          const payload = {
+            playerName: formData.get('playerName'),
+            playerEmail: formData.get('playerEmail') || undefined,
+            customerName: formData.get('customerName'),
+            phoneNumber: formData.get('phoneNumber')
+          };
+
+          // Validate phone number
+          const phoneRegex = /^254[17][0-9]{8}$/;
+          const formattedPhone = formatPhoneNumber(payload.phoneNumber);
+          if (!phoneRegex.test(formattedPhone)) {
+            createToast('Please enter a valid Kenyan phone number (e.g., 0712345678)', 'error');
+            return;
+          }
+
+          // Show loading state
+          submitNewPlayerBtn.classList.add('hidden');
+          loadingNewPlayerBtn.classList.remove('hidden');
+
+          try {
+            // Send API request
+            const response = await fetch('/api/register-new-player', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              // Success - payment initiated
+              createToast('Registration successful! Please check your phone to complete payment.', 'success');
+
+              // Track the pending payment ID and set payment as active
+              pendingPaymentId = data.paymentId;
+              isPaymentActive = true;
+
+              // Close new player modal
+              newPlayerModal.classList.remove('show');
+              newPlayerForm.reset();
+
+              // Start checking payment status
+              if (data.checkoutRequestId) {
+                checkPaymentStatus(data.checkoutRequestId, data.paymentId);
+              }
+            } else {
+              // Error
+              createToast(data.error || 'Failed to register. Please try again.', 'error');
+              submitNewPlayerBtn.classList.remove('hidden');
+              loadingNewPlayerBtn.classList.add('hidden');
+            }
+          } catch (error) {
+            console.error('Error:', error);
+            createToast('An error occurred. Please try again later.', 'error');
+            submitNewPlayerBtn.classList.remove('hidden');
+            loadingNewPlayerBtn.classList.add('hidden');
+          }
+        });
+
+        // Function to cancel a payment and release players
+        async function cancelPayment(paymentId) {
+          try {
+            const response = await fetch(`/api/cancel-payment/${paymentId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+             // console.log(`Payment ${paymentId} cancelled, ${data.ticketsReleased} players released`);
+   // If the payment was initiated successfully
+              createToast('Payment cancelled by user.', 'error');
+
+
+            } else {
+              console.error('Failed to cancel payment:', data.error);
+            }
+          } catch (error) {
+            console.error('Error cancelling payment:', error);
+          }
+        }
+
         // Function to check payment status
         function checkPaymentStatus(checkoutRequestId, paymentId) {
+          let pollCount = 0;
+          const maxPolls = 60; // Maximum 5 minutes (60 polls * 5 seconds)
+
           function queryStatus() {
             return fetch('/api/query-payment-status', {
               method: 'POST',
@@ -974,45 +1362,114 @@
           }
 
           function processStatus(statusData) {
+            // Check if payment was cancelled (modal closed)
+            if (!isPaymentActive) {
+              console.log('Payment polling stopped - modal closed');
+              return;
+            }
+
+            pollCount++;
+
             if (statusData.errorCode) {
               // Payment failed or still pending
               if (statusData.errorCode === "500.001.1001") {
                 // Still waiting for payment (transaction in progress)
+
+                // Check if we've exceeded maximum polling time
+                if (pollCount >= maxPolls) {
+                  isPaymentActive = false;
+                  createToast('Payment timeout. Please try again or check your M-Pesa messages.', 'error');
+                  // Cancel the payment to release the players
+                  cancelPayment(paymentId);
+                  pendingPaymentId = null;
+                  submitRegistrationBtn.classList.remove('hidden');
+                  loadingButton.classList.add('hidden');
+                  return;
+                }
+
                 // Continue polling
                 return new Promise(resolve => setTimeout(resolve, 5000))
-                  .then(queryStatus)
+                  .then(() => {
+                    // Check again before making the request
+                    if (!isPaymentActive) {
+                      console.log('Payment polling stopped during delay');
+                      return Promise.reject(new Error('Payment cancelled'));
+                    }
+                    return queryStatus();
+                  })
                   .then(response => response.json())
                   .then(processStatus)
                   .catch(error => {
+                    if (error.message === 'Payment cancelled') {
+                      // User cancelled, don't show error
+                      return;
+                    }
                     createToast('An unexpected error occurred while checking payment status', 'error');
+                    // Cancel the payment on error
+                    cancelPayment(paymentId);
+                    isPaymentActive = false;
+                    pendingPaymentId = null;
                     submitRegistrationBtn.classList.remove('hidden');
                     loadingButton.classList.add('hidden');
                   });
               } else {
                 // Payment failed with a specific error
+                isPaymentActive = false;
                 createToast('Payment failed: ' + (statusData.errorMessage || 'Unknown error'), 'error');
+                // Cancel the payment to release the players
+                cancelPayment(paymentId);
+                pendingPaymentId = null; // Clear pending payment
                 submitRegistrationBtn.classList.remove('hidden');
                 loadingButton.classList.add('hidden');
               }
             } else if (statusData.ResultCode === "0") {
               // Payment successful
+              isPaymentActive = false;
+              pendingPaymentId = null; // Clear pending payment
               createToast('Payment successful! Players have been registered. Email confirmations are being sent.', 'success');
               // Close modal and reset form
               registrationModal.classList.remove('show');
               document.body.style.overflow = ''; // Allow scrolling again
 
-              // Refresh the page to show updated data
+              // Refresh the page to show updated data - force reload from server
               setTimeout(() => {
-                window.location.reload();
+                window.location.reload(true);
               }, 2000);
             } else {
+              // Check if we've exceeded maximum polling time
+              if (pollCount >= maxPolls) {
+                isPaymentActive = false;
+                createToast('Payment timeout. Please try again or check your M-Pesa messages.', 'error');
+                // Cancel the payment to release the players
+                cancelPayment(paymentId);
+                pendingPaymentId = null;
+                submitRegistrationBtn.classList.remove('hidden');
+                loadingButton.classList.add('hidden');
+                return;
+              }
+
               // Continue polling until we get a definitive status
               return new Promise(resolve => setTimeout(resolve, 5000))
-                .then(queryStatus)
+                .then(() => {
+                  // Check again before making the request
+                  if (!isPaymentActive) {
+                    console.log('Payment polling stopped during delay');
+                    return Promise.reject(new Error('Payment cancelled'));
+                  }
+                  return queryStatus();
+                })
                 .then(response => response.json())
                 .then(processStatus)
                 .catch(error => {
+                  if (error.message === 'Payment cancelled') {
+                    // User cancelled, don't show error
+                    return;
+                  }
+                  isPaymentActive = false;
                   createToast('An unexpected error occurred while checking payment status', 'error');
+                  // Cancel the payment on error
+                  cancelPayment(paymentId);
+                  pendingPaymentId = null;
                   submitRegistrationBtn.classList.remove('hidden');
                   loadingButton.classList.add('hidden');
                 });
@@ -1024,14 +1481,100 @@
             .then(response => response.json())
             .then(processStatus)
             .catch(error => {
+              if (error.message === 'Payment cancelled') {
+                // User cancelled, don't show error
+                return;
+              }
+              isPaymentActive = false;
               createToast('An unexpected error occurred while checking payment status', 'error');
+              // Cancel the payment on error
+              cancelPayment(paymentId);
+              pendingPaymentId = null;
               submitRegistrationBtn.classList.remove('hidden');
               loadingButton.classList.add('hidden');
             });
         }
 
+        // Countdown Timer Functions
+        const countdownContainer = document.getElementById('countdown-container');
+        const daysEl = document.getElementById('countdown-days');
+        const hoursEl = document.getElementById('countdown-hours');
+        const minutesEl = document.getElementById('countdown-minutes');
+        const secondsEl = document.getElementById('countdown-seconds');
+
+        let deadlineDate = null;
+        let countdownInterval = null;
+
+        // Fetch deadline from API
+        async function fetchDeadline() {
+          try {
+            const response = await fetch('/api/check-deadline');
+            if (!response.ok) {
+              throw new Error('Failed to fetch deadline');
+            }
+
+            const data = await response.json();
+
+            if (data.deadline_passed) {
+              // Deadline has passed, hide countdown
+              countdownContainer.style.display = 'none';
+              return;
+            }
+
+            // Parse the deadline ISO string
+            deadlineDate = new Date(data.deadline);
+
+            // Show the countdown container
+            countdownContainer.style.display = 'block';
+
+            // Start the countdown
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+
+          } catch (error) {
+            console.error('Error fetching deadline:', error);
+            // Hide countdown on error
+            countdownContainer.style.display = 'none';
+          }
+        }
+
+        // Update countdown display
+        function updateCountdown() {
+          if (!deadlineDate) return;
+
+          const now = new Date();
+          const timeRemaining = deadlineDate - now;
+
+          if (timeRemaining <= 0) {
+            // Countdown finished
+            clearInterval(countdownInterval);
+            daysEl.textContent = '00';
+            hoursEl.textContent = '00';
+            minutesEl.textContent = '00';
+            secondsEl.textContent = '00';
+            // Optionally reload the page to trigger deadline redirect
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+            return;
+          }
+
+          // Calculate time components
+          const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+          // Update display with leading zeros
+          daysEl.textContent = String(days).padStart(2, '0');
+          hoursEl.textContent = String(hours).padStart(2, '0');
+          minutesEl.textContent = String(minutes).padStart(2, '0');
+          secondsEl.textContent = String(seconds).padStart(2, '0');
+        }
+
         // Initialize
         fetchData();
+        fetchDeadline();
       });
     </script>
   </body>

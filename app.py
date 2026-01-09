@@ -23,6 +23,7 @@ app = Flask("Scrabble Kenya Payments System")
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = SQLALCHEMY_TRACK_MODIFICATIONS
 app.config["FLASK_SECRET_KEY"] = FLASK_SECRET_KEY
+app.config["PORT"] = PORT
 
 # M-Pesa Configuration
 app.config["MPESA_BASE_URL"] = MPESA_BASE_URL
@@ -190,6 +191,7 @@ class Player(db.Model):
     playerName = db.Column(db.String(255), nullable=False)
     playerRating = db.Column(db.Integer, nullable=False)
     playerEmail = db.Column(db.String(255))
+    paidUp = db.Column(db.Integer, default=0)  # 0 = not paid up, 1 = paid up
 
     # Relationship with Ticket model (one-to-one)
     ticket = db.relationship("Ticket", back_populates="player", uselist=False)
@@ -201,6 +203,7 @@ class Player(db.Model):
             "playerName": self.playerName,
             "playerRating": self.playerRating,
             "playerEmail": self.playerEmail,
+            "paidUp": self.paidUp if self.paidUp is not None else 0,
         }
 
 
@@ -216,7 +219,7 @@ class Payment(db.Model):
     phoneNumber = db.Column(db.String(20), nullable=False)
     totalAmount = db.Column(db.Numeric(10, 2), nullable=False)
     paymentStatus = db.Column(
-        db.Enum("Pending", "Paid", "Failed"), default="Pending", nullable=False
+        db.Enum("Pending", "Paid", "Failed", "Cancelled"), default="Pending", nullable=False
     )
     mpesaReceiptNumber = db.Column(db.String(100))
     transactionDate = db.Column(db.DateTime)
@@ -419,7 +422,7 @@ def format_phone_number(phone_number):
 # Routes
 # Set your deadline here
 KENYA_TZ = timezone(timedelta(hours=3))
-DEADLINE = datetime(2026, 12, 31, 23, 59, 59, tzinfo=KENYA_TZ)
+DEADLINE = datetime(2026, 1, 9, 23, 59, 59, tzinfo=KENYA_TZ)
 
 def check_deadline():
     """Check if current time is past the deadline"""
@@ -572,13 +575,20 @@ def purchase_ticket():
     available_players = Player.query.filter(
         ~Player.playerId.in_(players_with_tickets)
     ).all()
-    
+
     divisions = Division.query.all()
-    
-    return jsonify({
+
+    response = jsonify({
         "players": [player.to_dict() for player in available_players],
         "divisions": [division.to_dict() for division in divisions]
     })
+
+    # Add cache control headers to prevent caching
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    return response
 
 
 @app.route("/api/make-payment", methods=["POST"])
@@ -645,17 +655,28 @@ def make_payment():
                            f"(rating range: {division.minRating}-{division.maxRating})"
                 }), 400
 
+            # Calculate player's total cost (division price + levy if not paid up)
+            player_cost = float(division.price)
+            levy_amount = 0
+
+            # Add 1000 KSh levy if player is not paid up
+            if not player.paidUp or player.paidUp == 0:
+                levy_amount = 1000
+                player_cost += levy_amount
+
             # Add to total amount
-            total_amount += float(division.price)
-            
+            total_amount += player_cost
+
             # Store for ticket creation
             player_registrations.append({
                 "player": player,
                 "division": division,
                 "playerId": player.playerId,
-                "divisionId": division.divisionId
+                "divisionId": division.divisionId,
+                "levyAmount": levy_amount,
+                "playerCost": player_cost
             })
-            
+
             registered_players.append(player.playerName)
 
         # Format phone number
@@ -678,7 +699,7 @@ def make_payment():
                 playerId=registration["playerId"],
                 divisionId=registration["divisionId"],
                 paymentId=new_payment.paymentId,
-                ticketPrice=float(registration["division"].price),
+                ticketPrice=float(registration["playerCost"]),  # Include levy in ticket price
             )
             db.session.add(new_ticket)
             new_tickets.append(new_ticket)
@@ -951,6 +972,12 @@ def callback_function():
         else:
             # Update payment status to Failed
             payment.paymentStatus = "Failed"
+
+            # Delete associated tickets to free up the players
+            tickets_to_delete = Ticket.query.filter_by(paymentId=payment.paymentId).all()
+            for ticket in tickets_to_delete:
+                db.session.delete(ticket)
+
             db.session.commit()
 
             return jsonify(
@@ -1006,10 +1033,236 @@ def get_payment(payment_id):
     return jsonify({"payment": payment_data})
 
 
+@app.route("/api/register-new-player", methods=["POST"])
+def register_new_player():
+    """
+    Endpoint to register a new player and initiate payment
+
+    New players are automatically:
+    - Assigned a rating of 0
+    - Placed in the Open Division (Div C)
+    - Marked as not paid up (paidUp = 0), which triggers 1000 KSh membership fee
+
+    Expected JSON payload:
+    {
+        "playerName": "John Doe",
+        "playerEmail": "john@example.com" (optional),
+        "customerName": "John Doe",
+        "phoneNumber": "254712345678"
+    }
+
+    Returns:
+        JSON: Payment initiation results or error
+    """
+    data = request.get_json()
+
+    try:
+        # Validate required fields
+        required_fields = ["playerName", "customerName", "phoneNumber"]
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        player_name = data["playerName"].strip()
+        player_email = data.get("playerEmail", "").strip() or None
+
+        # Check if player name already exists
+        existing_player = Player.query.filter(
+            db.func.lower(Player.playerName) == player_name.lower()
+        ).first()
+
+        if existing_player:
+            return jsonify({
+                "error": f"Player '{player_name}' already exists. Please search for your name in the player list."
+            }), 400
+
+        # Get Open Division (Div C)
+        open_division = Division.query.filter(
+            Division.title.like('%Open%')
+        ).first()
+
+        if not open_division:
+            return jsonify({"error": "Open Division not found"}), 500
+
+        # Create new player with rating 0 and paidUp = 0
+        new_player = Player(
+            playerName=player_name,
+            playerRating=0,  # New players start with rating 0
+            playerEmail=player_email,
+            paidUp=0  # Not paid up - will trigger 1000 KSh membership fee
+        )
+        db.session.add(new_player)
+        db.session.flush()  # Get the player ID
+
+        # Calculate total cost: Division price (750) + Membership fee (1000)
+        division_price = float(open_division.price)
+        membership_fee = 1000
+        total_amount = division_price + membership_fee
+
+        # Format phone number
+        formatted_phone = format_phone_number(data["phoneNumber"])
+
+        # Create payment record
+        new_payment = Payment(
+            customerName=data["customerName"],
+            phoneNumber=formatted_phone,
+            totalAmount=total_amount,
+            paymentStatus="Pending",
+        )
+        db.session.add(new_payment)
+        db.session.flush()
+
+        # Create ticket record
+        new_ticket = Ticket(
+            playerId=new_player.playerId,
+            divisionId=open_division.divisionId,
+            paymentId=new_payment.paymentId,
+            ticketPrice=total_amount,  # Total includes membership fee
+        )
+        db.session.add(new_ticket)
+        db.session.flush()
+
+        # Get access token for M-Pesa API
+        access_token = get_access_token()
+        if not access_token:
+            db.session.rollback()
+            return jsonify({"error": "Failed to get M-Pesa access token"}), 500
+
+        # Prepare STK push request
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        password = base64.b64encode(
+            (
+                current_app.config["MPESA_BUSINESS_SHORT_CODE"]
+                + current_app.config["MPESA_PASSKEY"]
+                + timestamp
+            ).encode()
+        ).decode()
+
+        stk_push_url = os.path.join(
+            current_app.config["MPESA_BASE_URL"],
+            current_app.config["MPESA_STK_PUSH_URL"],
+        )
+
+        stk_push_headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + access_token,
+        }
+
+        stk_push_payload = {
+            "BusinessShortCode": current_app.config["MPESA_BUSINESS_SHORT_CODE"],
+            "Password": password,
+            "Timestamp": timestamp,
+            "TransactionType": "CustomerBuyGoodsOnline",
+            "Amount": int(total_amount),
+            "PartyA": formatted_phone,
+            "PartyB": current_app.config["MPESA_TILL_NUMBER"],
+            "PhoneNumber": formatted_phone,
+            "CallBackURL": current_app.config["MPESA_CALLBACK_URL"],
+            "AccountReference": "NewPlayerReg",
+            "TransactionDesc": f"New Player: {player_name}",
+        }
+
+        # Send STK push request
+        response = requests.post(
+            stk_push_url, headers=stk_push_headers, json=stk_push_payload
+        )
+
+        mpesa_response = response.json()
+        print(f"New player registration M-Pesa response: {mpesa_response}")
+
+        # Check if STK push was successful
+        if "ResponseCode" in mpesa_response and mpesa_response["ResponseCode"] == "0":
+            # Create PushRequest record
+            checkout_request_id = mpesa_response.get("CheckoutRequestID")
+
+            push_request = PushRequest(
+                paymentId=new_payment.paymentId,
+                checkoutRequestId=checkout_request_id,
+            )
+            db.session.add(push_request)
+            db.session.commit()
+
+            return jsonify({
+                "message": "New player registered successfully. Payment initiated.",
+                "player": new_player.to_dict(),
+                "division": open_division.to_dict(),
+                "divisionPrice": division_price,
+                "membershipFee": membership_fee,
+                "totalAmount": total_amount,
+                "paymentId": new_payment.paymentId,
+                "ticketId": new_ticket.ticketId,
+                "checkoutRequestId": checkout_request_id,
+                "responseDescription": mpesa_response.get("ResponseDescription", ""),
+            })
+        else:
+            # Rollback if STK push failed
+            db.session.rollback()
+            return jsonify({
+                "error": "Failed to initiate payment",
+                "mpesaResponse": mpesa_response,
+            }), 500
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/cancel-payment/<int:payment_id>", methods=["POST"])
+def cancel_payment(payment_id):
+    """
+    Endpoint to cancel a pending payment and release associated tickets
+
+    This endpoint should be called when:
+    - User manually cancels the payment dialog
+    - Payment times out without completion
+    - User wants to abort the registration process
+
+    Args:
+        payment_id (int): Payment ID to cancel
+
+    Returns:
+        JSON: Success message or error
+    """
+    try:
+        # Find the payment
+        payment = Payment.query.get(payment_id)
+
+        if not payment:
+            return jsonify({"error": "Payment not found"}), 404
+
+        # Only allow cancellation of pending payments
+        if payment.paymentStatus != "Pending":
+            return jsonify({
+                "error": f"Cannot cancel payment with status: {payment.paymentStatus}"
+            }), 400
+
+        # Update payment status to Cancelled
+        payment.paymentStatus = "Cancelled"
+
+        # Delete associated tickets to free up the players
+        tickets_to_delete = Ticket.query.filter_by(paymentId=payment_id).all()
+        deleted_count = len(tickets_to_delete)
+
+        for ticket in tickets_to_delete:
+            db.session.delete(ticket)
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Payment cancelled successfully",
+            "paymentId": payment_id,
+            "ticketsReleased": deleted_count
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     # Create the database if it doesn't exist
     with app.app_context():
         db.create_all()
 
     # Run the Flask app
-    app.run(debug=True, host="0.0.0.0", port=5001)
+    app.run(debug=True, host="0.0.0.0", port=PORT)

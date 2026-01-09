@@ -4,3 +4,5 @@ instance/
 /venv
 # /test
 .env 
+/.claude
+reg.sock

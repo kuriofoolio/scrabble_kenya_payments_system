@@ -1,0 +1,1 @@
+ ${player.playerEmail ? `<p class="text-xs text-gray-500 mb-3">📧 ${player.playerEmail}</p>` : `<p class="text-xs text-yellow-400 mb-3">⚠️ No email provided - ticket confirmation will not be sent</p>`}

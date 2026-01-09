@@ -1,6 +1,5 @@
-# cd ..
-sudo systemctl stop sk
-sudo systemctl start sk
+sudo systemctl stop reg
+sudo systemctl start reg
 sudo systemctl daemon-reload
-sudo systemctl enable sk
-sudo systemctl status sk
+sudo systemctl enable reg
+sudo systemctl status reg
