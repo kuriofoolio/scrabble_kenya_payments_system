@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket Records</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background-color: #f4f8fc;
+        }
+        h1 {
+            text-align: center;
+            color: green
+        }
+        .filter-container {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .filter-container h3 {
+            color: green;
+            margin-top: 0;
+        }
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .filter-btn {
+            padding: 10px 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .filter-btn:hover {
+            background-color: darkgreen;
+        }
+        .clear-btn {
+            background-color: #6c757d;
+        }
+        .clear-btn:hover {
+            background-color: #5a6268;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 30px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px 16px;
+            text-align: left;
+        }
+        th {
+            background-color: green;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f0f4f9;
+        }
+        .total-container {
+            background-color: white;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ticket Records</h1>
+    
+    <!-- Filter Section -->
+    <div class="filter-container">
+        <h3>Filter Options</h3>
+        <form method="GET" action="{{ url_for('tickets') }}">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="playerName">Player Name</label>
+                    <input type="text" id="playerName" name="playerName" placeholder="Search by name..." value="{{ request.args.get('playerName', '') }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="divisionId">Division</label>
+                    <select id="divisionId" name="divisionId">
+                        <option value="">All Divisions</option>
+                        {% for division in divisions %}
+                        <option value="{{ division.divisionId }}" {% if request.args.get('divisionId') == division.divisionId|string %}selected{% endif %}>
+                            {{ division.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="paymentStatus">Payment Status</label>
+                    <select id="paymentStatus" name="paymentStatus">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if request.args.get('paymentStatus') == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="success" {% if request.args.get('paymentStatus') == 'success' %}selected{% endif %}>Success</option>
+                        <option value="failed" {% if request.args.get('paymentStatus') == 'failed' %}selected{% endif %}>Failed</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="phoneNumber">Phone Number</label>
+                    <input type="text" id="phoneNumber" name="phoneNumber" placeholder="Search by phone..." value="{{ request.args.get('phoneNumber', '') }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="minPrice">Min Price</label>
+                    <input type="number" id="minPrice" name="minPrice" placeholder="Min" value="{{ request.args.get('minPrice', '') }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="maxPrice">Max Price</label>
+                    <input type="number" id="maxPrice" name="maxPrice" placeholder="Max" value="{{ request.args.get('maxPrice', '') }}">
+                </div>
+            </div>
+            
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="dateFrom">Date From</label>
+                    <input type="date" id="dateFrom" name="dateFrom" value="{{ request.args.get('dateFrom', '') }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="dateTo">Date To</label>
+                    <input type="date" id="dateTo" name="dateTo" value="{{ request.args.get('dateTo', '') }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="mpesaReceipt">M-Pesa Receipt</label>
+                    <input type="text" id="mpesaReceipt" name="mpesaReceipt" placeholder="Search receipt..." value="{{ request.args.get('mpesaReceipt', '') }}">
+                </div>
+
+                   <div class="filter-group">
+                    <label for="tournamentTag">Tournament Tag</label>
+                    <input type="text" id="tournamentTag" name="tournamentTag" placeholder="Search tournament..." value="{{ request.args.get('tournamentTag', '') }}">
+                </div>
+            </div>
+            
+            <div class="filter-buttons">
+                <button type="submit" class="filter-btn">Apply Filters</button>
+                <a href="{{ url_for('tickets') }}" class="filter-btn clear-btn" style="text-decoration: none; display: inline-block; text-align: center;">Clear Filters</a>
+            </div>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Ticket ID</th>
+                <th>Ticket Price</th>
+                <th>Division ID</th>
+                <th>Player ID</th>
+                <th>Player Name</th>
+                <th>Payment ID</th>
+                <th>Customer Name</th>
+                <th>Phone Number</th>
+                <th>Total Amount</th>
+                <th>Payment Status</th>
+                <th>M-Pesa Receipt</th>
+                <th>Tournament Tag</th>
+                <th>Date Created</th>
+                <th>Last Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>{{ ticket.ticketId }}</td>
+                <td>{{ ticket.ticketPrice }}</td>
+                <td>{{ ticket.divisionId }}</td>
+                <td>{{ ticket.playerId }}</td>
+                <td>{{ ticket.playerName }}</td>
+                <td>{{ ticket.paymentId }}</td>
+                <td>{{ ticket.customerName }}</td>
+                <td>{{ ticket.phoneNumber }}</td>
+                <td>{{ ticket.totalAmount }}</td>
+                <td>{{ ticket.paymentStatus }}</td>
+                <td>{{ ticket.mpesaReceiptNumber }}</td>
+                <td>{{ ticket.tournamentTag }}</td>
+                <td>{{ ticket.dateCreated }}</td>
+                <td>{{ ticket.lastUpdated }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="total-container">
+        Running Total: {{ running_total }}
+    </div>
+</body>
+</html>

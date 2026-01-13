@@ -6,3 +6,5 @@ instance/
 .env 
 /.claude
 reg.sock
+backups
+migrations

@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 read -p "what change are we making today: " modification
 
 #initialize branch name 
-branch='sk-daraja-v2'
+branch='sk-daraja-v3'
 
 #initialize repo
 # git init
@@ -28,7 +28,7 @@ git status
 # Commit the changes with a descriptive message
 git commit -m "$modification"
 
-#git branch -M $branch
+git branch -M $branch
 
 # git remote add origin https://$GIT_PAT@github.com/kuriofoolio/scrabble_kenya_payments_system.git
 #git remote add origin https://github.com/kuriofoolio/scrabble_kenya_payments_system.git

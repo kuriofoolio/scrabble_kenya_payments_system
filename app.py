@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.sql import func
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from threading import Thread
 from flask_mailman import EmailMultiAlternatives
 from config import *
@@ -24,6 +25,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = SQLALCHEMY_TRACK_MODIFICATIONS
 app.config["FLASK_SECRET_KEY"] = FLASK_SECRET_KEY
 app.config["PORT"] = PORT
+app.config["CURRENT_TOURNAMENT_TAG"] = CURRENT_TOURNAMENT_TAG
 
 # M-Pesa Configuration
 app.config["MPESA_BASE_URL"] = MPESA_BASE_URL
@@ -37,8 +39,24 @@ app.config["MPESA_CALLBACK_URL"] = MPESA_CALLBACK_URL
 app.config["MPESA_CONSUMER_KEY"] = MPESA_CONSUMER_KEY
 app.config["MPESA_CONSUMER_SECRET"] = MPESA_CONSUMER_SECRET
 
+# Tournament variables to be available in all templates
+app.config.from_object('config')
+
+@app.context_processor
+def inject_tournament_info():
+    return {
+        'tournament_info': {
+            'contact_phone': app.config['CONTACT_PHONE'],
+            'contact_person': app.config['CONTACT_PERSON'],
+            'tournament_date': app.config['TOURNAMENT_DATE'],
+            'tournament_venue': app.config['TOURNAMENT_VENUE'],
+            'tournament_region' : app.config['TOURNAMENT_REGION']
+        }
+    }
+
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
 # Email sending functions
@@ -153,7 +171,10 @@ class Division(db.Model):
     minRating = db.Column(db.Integer)
     maxRating = db.Column(db.Integer)
     price = db.Column(db.Numeric(10, 2), nullable=False)
-    dateCreated = db.Column(db.DateTime, default=func.now())
+    dateCreated =  db.Column(
+        db.DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc)
+    )
     lastUpdated = db.Column(
         db.DateTime, default=func.now(), onupdate=func.now()
     )
@@ -192,6 +213,7 @@ class Player(db.Model):
     playerRating = db.Column(db.Integer, nullable=False)
     playerEmail = db.Column(db.String(255))
     paidUp = db.Column(db.Integer, default=0)  # 0 = not paid up, 1 = paid up
+    active = db.Column(db.Integer, default=1)  # 0 = inactive, 1 = active
 
     # Relationship with Ticket model (one-to-one)
     ticket = db.relationship("Ticket", back_populates="player", uselist=False)
@@ -204,6 +226,7 @@ class Player(db.Model):
             "playerRating": self.playerRating,
             "playerEmail": self.playerEmail,
             "paidUp": self.paidUp if self.paidUp is not None else 0,
+            "active": self.active if self.active is not None else 1,
         }
 
 
@@ -222,8 +245,12 @@ class Payment(db.Model):
         db.Enum("Pending", "Paid", "Failed", "Cancelled"), default="Pending", nullable=False
     )
     mpesaReceiptNumber = db.Column(db.String(100))
+    tournamentTag = db.Column(db.String(100), default=lambda: current_app.config['CURRENT_TOURNAMENT_TAG'])
     transactionDate = db.Column(db.DateTime)
-    dateCreated = db.Column(db.DateTime, default=func.now())
+    dateCreated = db.Column(
+        db.DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc)
+    )
     lastUpdated = db.Column(
         db.DateTime, default=func.now(), onupdate=func.now()
     )
@@ -237,6 +264,7 @@ class Payment(db.Model):
     push_requests = db.relationship(
         "PushRequest", back_populates="payment", cascade="all, delete-orphan"
     )
+    
 
     def to_dict(self):
         """Convert payment object to dictionary"""
@@ -247,6 +275,7 @@ class Payment(db.Model):
             "totalAmount": float(self.totalAmount),
             "paymentStatus": self.paymentStatus,
             "mpesaReceiptNumber": self.mpesaReceiptNumber,
+            "tournamentTag": self.tournamentTag,
             "transactionDate": self.transactionDate.isoformat()
             if self.transactionDate
             else None,
@@ -284,7 +313,10 @@ class Ticket(db.Model):
         db.ForeignKey("payment.paymentId", ondelete="CASCADE"),
         nullable=False,
     )
-    dateCreated = db.Column(db.DateTime, default=func.now())
+    dateCreated = db.Column(
+        db.DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc)
+    )
     lastUpdated = db.Column(
         db.DateTime, default=func.now(), onupdate=func.now()
     )
@@ -339,7 +371,10 @@ class PushRequest(db.Model):
         nullable=False,
     )
     checkoutRequestId = db.Column(db.String(255), nullable=False)
-    dateCreated = db.Column(db.DateTime, default=func.now())
+    dateCreated = db.Column(
+        db.DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc)
+    )
     lastUpdated = db.Column(
         db.DateTime, default=func.now(), onupdate=func.now()
     )
@@ -422,7 +457,7 @@ def format_phone_number(phone_number):
 # Routes
 # Set your deadline here
 KENYA_TZ = timezone(timedelta(hours=3))
-DEADLINE = datetime(2026, 1, 9, 23, 59, 59, tzinfo=KENYA_TZ)
+DEADLINE = datetime(2026, 2, 6, 23, 59, 59, tzinfo=KENYA_TZ)
 
 def check_deadline():
     """Check if current time is past the deadline"""
@@ -444,11 +479,11 @@ def deadline_passed():
     deadline_formatted = DEADLINE.strftime("%B %d, %Y at %I:%M %p UTC")
     return render_template("deadline_passed.html", deadline=deadline_formatted)
 
+
 @app.route("/")
-# @deadline_required
 def index():
     """Root endpoint"""
-    return render_template("index.html")
+    return render_template('index.html' )
 
 @app.route("/api/check-deadline")
 def api_check_deadline():
@@ -568,12 +603,13 @@ def purchase_ticket():
     Endpoint to get all available players and divisions for ticket purchase
 
     Returns:
-        JSON: List of all players and divisions
+        JSON: List of all active players without tickets and divisions
     """
-    # Get players who don't already have tickets (since it's one-to-one)
+    # Get players who don't already have tickets AND are active (since it's one-to-one)
     players_with_tickets = db.session.query(Ticket.playerId).subquery()
     available_players = Player.query.filter(
-        ~Player.playerId.in_(players_with_tickets)
+        ~Player.playerId.in_(players_with_tickets),
+        Player.active == 1  # Only show active players
     ).all()
 
     divisions = Division.query.all()
@@ -1084,12 +1120,13 @@ def register_new_player():
         if not open_division:
             return jsonify({"error": "Open Division not found"}), 500
 
-        # Create new player with rating 0 and paidUp = 0
+        # Create new player with rating 0, paidUp = 0, and active = 1
         new_player = Player(
             playerName=player_name,
             playerRating=0,  # New players start with rating 0
             playerEmail=player_email,
-            paidUp=0  # Not paid up - will trigger 1000 KSh membership fee
+            paidUp=0,  # Not paid up - will trigger 1000 KSh membership fee
+            active=1  # New players are active by default
         )
         db.session.add(new_player)
         db.session.flush()  # Get the player ID
@@ -1207,6 +1244,122 @@ def register_new_player():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/players/deactivate-registered", methods=["POST"])
+def deactivate_registered_players():
+    """
+    Endpoint to deactivate all players who have registered (have tickets)
+
+    This should be called after a tournament ends to prepare for the next tournament.
+    Preserves all payment and ticket history while preventing duplicate registrations.
+
+    Returns:
+        JSON: Count of players deactivated
+    """
+    try:
+        # Get all players who have tickets
+        players_with_tickets = db.session.query(Ticket.playerId).distinct().all()
+        player_ids = [player_id for (player_id,) in players_with_tickets]
+
+        if not player_ids:
+            return jsonify({
+                "message": "No registered players to deactivate",
+                "count": 0
+            })
+
+        # Deactivate these players
+        updated_count = Player.query.filter(
+            Player.playerId.in_(player_ids)
+        ).update({"active": 0}, synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Successfully deactivated {updated_count} registered players",
+            "count": updated_count,
+            "playerIds": player_ids
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/players/activate-all", methods=["POST"])
+def activate_all_players():
+    """
+    Endpoint to activate all players
+
+    This can be called before a new tournament to make all players available again,
+    or to undo a deactivation.
+
+    Returns:
+        JSON: Count of players activated
+    """
+    try:
+        # Activate all inactive players
+        updated_count = Player.query.filter(
+            Player.active == 0
+        ).update({"active": 1}, synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Successfully activated {updated_count} players",
+            "count": updated_count
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/players/toggle-active", methods=["POST"])
+def toggle_player_active():
+    """
+    Endpoint to toggle active status for specific players
+
+    Expected JSON payload:
+    {
+        "playerIds": [1, 2, 3],
+        "active": 1  // 1 for active, 0 for inactive
+    }
+
+    Returns:
+        JSON: Count of players updated
+    """
+    data = request.get_json()
+
+    try:
+        if "playerIds" not in data or "active" not in data:
+            return jsonify({"error": "Missing required fields: playerIds and active"}), 400
+
+        player_ids = data["playerIds"]
+        active_status = data["active"]
+
+        if not isinstance(player_ids, list) or len(player_ids) == 0:
+            return jsonify({"error": "playerIds must be a non-empty list"}), 400
+
+        if active_status not in [0, 1]:
+            return jsonify({"error": "active must be 0 or 1"}), 400
+
+        # Update players
+        updated_count = Player.query.filter(
+            Player.playerId.in_(player_ids)
+        ).update({"active": active_status}, synchronize_session=False)
+
+        db.session.commit()
+
+        status_text = "activated" if active_status == 1 else "deactivated"
+        return jsonify({
+            "message": f"Successfully {status_text} {updated_count} players",
+            "count": updated_count
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/cancel-payment/<int:payment_id>", methods=["POST"])
 def cancel_payment(payment_id):
     """
@@ -1257,6 +1410,85 @@ def cancel_payment(payment_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+
+@app.route("/tickets")
+def tickets():
+    running_total=0
+    # Get filter parameters
+    player_name = request.args.get('playerName', '')
+    division_id = request.args.get('divisionId', '')
+    payment_status = request.args.get('paymentStatus', '')
+    phone_number = request.args.get('phoneNumber', '')
+    min_price = request.args.get('minPrice', '')
+    max_price = request.args.get('maxPrice', '')
+    date_from = request.args.get('dateFrom', '')
+    date_to = request.args.get('dateTo', '')
+    mpesa_receipt = request.args.get('mpesaReceipt', '')
+    tournament_tag = request.args.get('tournamentTag', '')
+    
+
+    # Start with base query
+    query = Ticket.query
+    
+    # Apply filters
+    if player_name:
+        query = query.join(Player).filter(Player.playerName.ilike(f'%{player_name}%'))
+    
+    if division_id:
+        query = query.filter(Ticket.divisionId == division_id)
+    
+    if payment_status:
+        query = query.join(Payment).filter(Payment.paymentStatus == payment_status)
+    
+    if phone_number:
+        query = query.join(Payment).filter(Payment.phoneNumber.ilike(f'%{phone_number}%'))
+    
+    if min_price:
+        query = query.filter(Ticket.ticketPrice >= float(min_price))
+    
+    if max_price:
+        query = query.filter(Ticket.ticketPrice <= float(max_price))
+    
+    if date_from:
+        query = query.filter(Ticket.dateCreated >= date_from)
+    
+    if date_to:
+        query = query.filter(Ticket.dateCreated <= date_to)
+    
+    if mpesa_receipt:
+        query = query.join(Payment).filter(Payment.mpesaReceiptNumber.ilike(f'%{mpesa_receipt}%'))
+    
+    if tournament_tag:
+        query = query.join(Payment).filter(Payment.tournamentTag.ilike(f'%{tournament_tag}%'))
+
+    tickets = query.all()
+    
+    # Get all divisions for the filter dropdown
+    divisions = Division.query.all()
+    
+    ticket_data = []
+    for ticket in tickets:
+        running_total+=ticket.payment.totalAmount
+        ticket_data.append({
+            "ticketId": ticket.ticketId,
+            "ticketPrice": ticket.ticketPrice,
+            "divisionId": ticket.divisionId,
+            "playerId": ticket.playerId,
+            "playerName": ticket.player.playerName,
+            "paymentId": ticket.paymentId,
+            "customerName": ticket.payment.customerName,
+            "phoneNumber": ticket.payment.phoneNumber,
+            "totalAmount": ticket.payment.totalAmount,
+            "paymentStatus": ticket.payment.paymentStatus,
+            "mpesaReceiptNumber": ticket.payment.mpesaReceiptNumber,
+            "tournamentTag": ticket.payment.tournamentTag,
+            "dateCreated": ticket.dateCreated,
+            "lastUpdated": ticket.lastUpdated,
+        })
+
+    return render_template('tickets.html', tickets=ticket_data, running_total=running_total, divisions=divisions)
 
 
 if __name__ == "__main__":

@@ -19,8 +19,13 @@ MPESA_CONSUMER_SECRET=  os.getenv('MPESA_CONSUMER_SECRET')
 MPESA_TILL_NUMBER=  os.getenv('MPESA_TILL_NUMBER')
 MPESA_BUSINESS_SHORT_CODE=  os.getenv('MPESA_BUSINESS_SHORT_CODE')
 FLASK_SECRET_KEY=  os.getenv('FLASK_SECRET_KEY')
-# MPESA_CALLBACK_URL="https://cf8061fe3e78.ngrok-free.app/api/mpesa-callback"
 MPESA_CALLBACK_URL="https://register.scrabblekenya.com/api/mpesa-callback"
+CURRENT_TOURNAMENT_TAG= 'KITUI-Feb-2026'
+CONTACT_PHONE='+254 723 336 933'
+CONTACT_PERSON='Robert Nguli'
+TOURNAMENT_DATE='7th-8th February 2025'
+TOURNAMENT_VENUE='TBA'
+TOURNAMENT_REGION ='Kitui'
 
 # Email Configuration
 MAIL_SERVER = 'smtp.gmail.com'
