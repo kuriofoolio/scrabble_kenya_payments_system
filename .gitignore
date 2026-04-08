@@ -2,7 +2,7 @@ __pycache__/
 instance/
 .webassets-cache
 /venv
-# /test
+/test
 .env 
 /.claude
 reg.sock

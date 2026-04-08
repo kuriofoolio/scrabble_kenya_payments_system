@@ -457,7 +457,7 @@ def format_phone_number(phone_number):
 # Routes
 # Set your deadline here
 KENYA_TZ = timezone(timedelta(hours=3))
-DEADLINE = datetime(2026, 2, 6, 23, 59, 59, tzinfo=KENYA_TZ)
+DEADLINE = datetime(2026, 4, 11, 23, 59, 59, tzinfo=KENYA_TZ)
 
 def check_deadline():
     """Check if current time is past the deadline"""
